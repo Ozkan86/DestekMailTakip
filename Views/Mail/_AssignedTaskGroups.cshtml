@@ -1,0 +1,53 @@
+@model MailIndexViewModel
+@inject IUserAvatarColorService AvatarColors
+@{
+    var groups = Model.Mails
+        .SelectMany(mail => mail.AssignedUsers, (mail, assignee) => new { Mail = mail, Assignee = assignee })
+        .GroupBy(x => x.Assignee.UserId)
+        .Select(g => new
+        {
+            UserId = g.Key,
+            DisplayName = g.First().Assignee.DisplayName,
+            Tasks = g.Select(x => x.Mail).OrderByDescending(m => m.ReceivedAt).ToList()
+        })
+        .OrderBy(g => g.DisplayName)
+        .ToList();
+}
+
+@foreach (var group in groups)
+{
+    var groupColor = AvatarColors.ColorFor(group.UserId, group.DisplayName);
+
+    <div class="assigned-user-group">
+        <button type="button" class="assigned-user-group-header" aria-expanded="true">
+            <span class="avatar-circle" style="background:@groupColor">@AvatarHelper.Initials(group.DisplayName, group.DisplayName)</span>
+            <span class="assigned-user-group-name">@group.DisplayName</span>
+            <span class="assigned-user-group-count">@group.Tasks.Count</span>
+            <svg class="assigned-user-group-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="9 6 15 12 9 18" />
+            </svg>
+        </button>
+
+        <div class="assigned-user-group-body">
+            <div class="assigned-user-group-body-inner">
+                @foreach (var mail in group.Tasks)
+                {
+                    <partial name="_TaskRow" model="(mail, Model.SelectedId, Model.Folder)" />
+                }
+            </div>
+        </div>
+    </div>
+}
+
+<script>
+    (function () {
+        document.querySelectorAll('.assigned-user-group-header').forEach(function (header) {
+            header.addEventListener('click', function () {
+                var group = header.closest('.assigned-user-group');
+                if (!group) return;
+                var collapsed = group.classList.toggle('is-collapsed');
+                header.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+            });
+        });
+    })();
+</script>

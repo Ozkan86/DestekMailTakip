@@ -1,0 +1,2667 @@
+/* Musteri pano layoutunda (bkz. _BoardLayout.cshtml) sidebar yok, tek
+   cocuk (.app-content) var; ama yine de temel .app-body flex zincirinde
+   kalmasi lazim - aksi halde (eskiden "display:block" idi) .app-content'in
+   flex:1 1 auto/min-height:0 kurallari (mail.css) etkisiz kalir, ".app-content"
+   sinirsiz yukseklige buyur, disaridaki ".app-body{overflow:hidden}"
+   (mail.css, sayfa govdesi kaymasin diye eklendi) da tasan kismi scroll
+   edilemez sekilde kirpar. "display:flex" ile ".app-content" tekrar dogru
+   yukseklige sinirlanip kendi ic scroll'unu (overflow:auto) kullanabiliyor. */
+.board-app-body {
+    display: flex;
+    min-height: 0;
+}
+
+.board-page-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 20px;
+}
+
+.board-page-header h2 {
+    font-size: 20px;
+    font-weight: 700;
+    margin: 0;
+}
+
+/* ---- Pano sayfa basligindaki aksiyon butonlari ----
+   ("Panolar"a don, "Arşiv Kutusu", "+ Yeni Pano", "Pano Görevlerim"...)
+   Renkler navbar (--topbar-bg) ve yan menu paneli (--sidebar-*) degiskenlerinden
+   turetilir, boylece uygulamanin geri kalaniyla ayni paleti kullanirlar. */
+.board-page-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.board-header-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 14px;
+    border: 1px solid var(--sidebar-border);
+    border-radius: 9px;
+    background: var(--sidebar-bg);
+    color: var(--sidebar-text-active);
+    font-size: 13px;
+    font-weight: 600;
+    line-height: 1;
+    white-space: nowrap;
+    text-decoration: none;
+    cursor: pointer;
+    transition: background 0.14s ease, border-color 0.14s ease, color 0.14s ease, box-shadow 0.14s ease, transform 0.14s ease;
+}
+
+.board-header-btn svg {
+    width: 16px;
+    height: 16px;
+    flex-shrink: 0;
+}
+
+.board-header-btn:hover {
+    background: #dce5f0;
+    border-color: #c3cfdf;
+    color: var(--brand-blue-dark);
+    text-decoration: none;
+    box-shadow: 0 2px 6px rgba(35, 85, 133, 0.12);
+}
+
+.board-header-btn:active {
+    transform: translateY(1px);
+    box-shadow: none;
+}
+
+.board-header-btn:focus-visible {
+    outline: 2px solid rgba(35, 85, 133, 0.45);
+    outline-offset: 2px;
+}
+
+/* Dolu (vurgulu) varyant: navbar ile birebir ayni mavi. */
+.board-header-btn-primary {
+    background: var(--topbar-bg);
+    border-color: var(--topbar-bg);
+    color: #fff;
+}
+
+.board-header-btn-primary:hover {
+    background: var(--brand-blue-dark);
+    border-color: var(--brand-blue-dark);
+    color: #fff;
+    box-shadow: 0 2px 8px rgba(35, 85, 133, 0.28);
+}
+
+/* Geri donus butonunda ok, uzerine gelince hafifce sola kayar. */
+.board-header-btn-back svg {
+    transition: transform 0.14s ease;
+}
+
+.board-header-btn-back:hover svg {
+    transform: translateX(-2px);
+}
+
+/* ---- Panolar (mühendis/admin): musteriye gore filtrele penceresi ---- */
+.customer-filter-count {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 16px;
+    height: 16px;
+    padding: 0 4px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.28);
+    font-size: 10.5px;
+    font-weight: 700;
+}
+
+.customer-filter-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.45);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    z-index: 70;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+}
+
+.customer-filter-modal {
+    background: #fff;
+    border-radius: 14px;
+    width: min(480px, 100%);
+    max-height: min(640px, calc(100vh - 48px));
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 30px 80px rgba(15, 23, 42, 0.35);
+    overflow: hidden;
+}
+
+.customer-filter-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 18px;
+    border-bottom: 1px solid #eceef2;
+    flex-shrink: 0;
+}
+
+.customer-filter-header h3 {
+    margin: 0;
+    font-size: 15px;
+    font-weight: 700;
+    color: #1a2333;
+}
+
+/* Arama cubugu, kaydirilabilir musteri listesinin (bkz. .customer-filter-list)
+   DISINDA ayri bir flex satiri; bu yuzden liste kaydirilirken arama cubugu
+   her zaman ustte sabit kalir. */
+.customer-filter-search-wrap {
+    position: relative;
+    padding: 12px 18px;
+    border-bottom: 1px solid #eceef2;
+    flex-shrink: 0;
+}
+
+.customer-filter-search-icon {
+    position: absolute;
+    left: 30px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 15px;
+    height: 15px;
+    color: #9aa0ab;
+    pointer-events: none;
+}
+
+.customer-filter-search-input {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 9px 12px 9px 34px;
+    border: 1.5px solid #e4e7ec;
+    border-radius: 8px;
+    font-size: 13.5px;
+}
+
+.customer-filter-search-input:focus {
+    outline: none;
+    border-color: var(--brand-blue, #235585);
+}
+
+.customer-filter-list {
+    flex: 1 1 auto;
+    overflow-y: auto;
+    padding: 8px 10px;
+}
+
+.customer-filter-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px;
+    border-radius: 8px;
+    cursor: pointer;
+}
+
+.customer-filter-row:hover {
+    background: #f7f8fb;
+}
+
+.customer-filter-row .avatar-circle {
+    width: 26px;
+    height: 26px;
+    font-size: 11px;
+    flex-shrink: 0;
+}
+
+.customer-filter-row-name {
+    font-size: 13.5px;
+    color: #1a2333;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.customer-filter-checkbox {
+    flex-shrink: 0;
+    width: 16px;
+    height: 16px;
+    accent-color: var(--brand-blue, #235585);
+}
+
+.customer-filter-empty {
+    padding: 16px 8px;
+    color: #9aa0ab;
+    font-size: 12.5px;
+    text-align: center;
+}
+
+.customer-filter-footer {
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 14px 18px;
+    border-top: 1px solid #eceef2;
+    flex-shrink: 0;
+}
+
+.board-index-layout {
+    display: flex;
+    align-items: flex-start;
+    gap: 24px;
+}
+
+.board-index-main {
+    flex: 1 1 720px;
+    min-width: 0;
+}
+
+.board-stats-sidebar {
+    flex: 0 0 300px;
+    width: 300px;
+    position: sticky;
+    top: 20px;
+}
+
+@media (max-width: 980px) {
+    .board-index-layout {
+        flex-direction: column;
+    }
+
+    .board-stats-sidebar {
+        width: 100%;
+        flex: 1 1 auto;
+        position: static;
+    }
+}
+
+.board-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+/* ---- Panolarım özet/son aktivite widget'ı (müşteri /Board/Index sağ sütun) ---- */
+.board-stats-card {
+    background: #fff;
+    border: 1px solid #eceef2;
+    border-radius: 12px;
+    padding: 18px;
+}
+
+.board-stats-card-title {
+    font-size: 13.5px;
+    font-weight: 700;
+    color: #1a2333;
+    margin-bottom: 14px;
+}
+
+.board-stats-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    margin-bottom: 16px;
+}
+
+.board-stats-item {
+    background: #f7f8fb;
+    border: 1px solid #eceef2;
+    border-radius: 10px;
+    padding: 10px 8px;
+    text-align: center;
+}
+
+.board-stats-item-pending {
+    background: rgba(245, 166, 35, 0.12);
+    border-color: rgba(245, 166, 35, 0.35);
+}
+
+.board-stats-value {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--brand-blue, #235585);
+    line-height: 1.2;
+}
+
+.board-stats-item-pending .board-stats-value {
+    color: #b9740f;
+}
+
+.board-stats-label {
+    font-size: 10.5px;
+    font-weight: 600;
+    color: #6b7280;
+    margin-top: 2px;
+    letter-spacing: 0.01em;
+}
+
+.board-stats-activity-title {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: #9aa0ab;
+    margin-bottom: 8px;
+}
+
+.board-stats-activity-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.board-stats-activity-item {
+    display: block;
+    text-decoration: none;
+    color: inherit;
+    border: 1px solid #eceef2;
+    border-radius: 8px;
+    padding: 8px 10px;
+    transition: background 0.12s ease, border-color 0.12s ease;
+}
+
+.board-stats-activity-item:hover {
+    background: #f8f9fb;
+    border-color: #d0d5dd;
+}
+
+.board-stats-activity-main {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.board-stats-activity-card {
+    font-size: 13px;
+    font-weight: 600;
+    color: #1a2333;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.board-stats-activity-badge {
+    flex-shrink: 0;
+    font-size: 10.5px;
+    font-weight: 700;
+    color: var(--brand-blue, #235585);
+    background: rgba(35, 85, 133, 0.1);
+    border-radius: 6px;
+    padding: 2px 6px;
+}
+
+.board-stats-activity-meta {
+    font-size: 11.5px;
+    color: #9aa0ab;
+    margin-top: 3px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.board-stats-empty {
+    font-size: 12.5px;
+    color: #9aa0ab;
+}
+
+.board-list-item {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+    background: #fff;
+    border: 1px solid #eceef2;
+    border-radius: 12px;
+    padding: 14px 18px;
+}
+
+.board-list-item:hover {
+    border-color: #d0d5dd;
+    background: #f8f9fb;
+}
+
+.board-list-item-link {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    flex: 1 1 auto;
+    min-width: 0;
+    text-decoration: none;
+    color: inherit;
+}
+
+.board-list-item-title {
+    font-weight: 600;
+    font-size: 14.5px;
+    color: #1a2333;
+}
+
+.board-list-item-meta {
+    font-size: 12.5px;
+    color: #6b7280;
+    margin-top: 2px;
+}
+
+.board-list-item-actions {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    flex-shrink: 0;
+}
+
+.board-list-item-caret {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 30px;
+    color: #9aa0ab;
+    flex-shrink: 0;
+}
+
+.board-list-item-menu {
+    position: relative;
+    flex-shrink: 0;
+}
+
+.board-list-item-menu-trigger {
+    cursor: pointer;
+    list-style: none;
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 6px;
+    color: #6b7280;
+    font-size: 19px;
+    line-height: 1;
+    user-select: none;
+}
+
+.board-list-item-menu-trigger:hover {
+    background: #f0f2f5;
+    color: #1a2333;
+}
+
+.board-list-item-menu-trigger::-webkit-details-marker {
+    display: none;
+}
+
+.board-list-item-menu-panel {
+    position: absolute;
+    right: 0;
+    top: calc(100% + 4px);
+    z-index: 5;
+    background: #fff;
+    border: 1px solid #eceef2;
+    border-radius: 10px;
+    box-shadow: 0 8px 24px rgba(16, 24, 40, 0.14);
+    padding: 6px;
+    width: 240px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.board-list-item-menu-item {
+    display: block;
+    width: 100%;
+    text-align: left;
+    padding: 9px 10px;
+    border-radius: 6px;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    font-size: 13.5px;
+    color: #1a2333;
+    list-style: none;
+}
+
+.board-list-item-menu-item::-webkit-details-marker {
+    display: none;
+}
+
+.board-list-item-menu-item:hover {
+    background: #f0f2f5;
+}
+
+.board-list-item-menu-item-danger {
+    color: #dc3545;
+}
+
+.board-list-item-menu-item-danger:hover {
+    background: rgba(220, 53, 69, 0.08);
+}
+
+.board-list-item-submenu {
+    border-top: 1px solid #eceef2;
+    margin-top: 2px;
+    padding-top: 2px;
+}
+
+.board-list-item-submenu:first-child {
+    border-top: none;
+    margin-top: 0;
+    padding-top: 0;
+}
+
+.board-rename-form {
+    display: flex;
+    gap: 8px;
+    padding: 8px 10px 10px;
+}
+
+.board-rename-form .form-control {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.board-list-item-authorize-panel {
+    margin-top: 4px;
+    padding: 10px;
+    border-radius: 8px;
+    background: #f7f8fb;
+    width: 100%;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.board-authorize-add-form {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.board-authorized-emails-title {
+    font-size: 12px;
+    font-weight: 600;
+    color: #475467;
+}
+
+.board-authorized-emails-list {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    max-height: 180px;
+    overflow-y: auto;
+    padding-right: 2px;
+}
+
+.board-authorized-email-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    font-size: 13px;
+    color: #1a2333;
+    background: #fff;
+    border: 1px solid #eceef2;
+    border-radius: 8px;
+    padding: 6px 10px;
+}
+
+.board-authorized-email-remove-form {
+    display: contents;
+}
+
+.board-authorized-email-remove-btn {
+    border: none;
+    background: transparent;
+    color: #9aa0ab;
+    cursor: pointer;
+    font-size: 15px;
+    line-height: 1;
+    padding: 2px 4px;
+    border-radius: 4px;
+    flex-shrink: 0;
+}
+
+.board-authorized-email-remove-btn:hover {
+    background: rgba(220, 53, 69, 0.1);
+    color: #dc3545;
+}
+
+.board-authorized-emails-empty {
+    font-size: 12.5px;
+    margin: 0;
+}
+
+/* ---- "Yetkileri Görüntüle" (mühendis/admin, salt okunur) ---- */
+.board-authorization-person-row {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    background: #fff;
+    border: 1px solid #eceef2;
+    border-radius: 8px;
+    padding: 7px 10px;
+}
+
+.board-authorization-person-name {
+    font-size: 13px;
+    font-weight: 600;
+    color: #1a2333;
+}
+
+.board-authorization-person-email {
+    font-size: 12px;
+    color: #6b7280;
+}
+
+.board-view-authorizations-loading {
+    font-size: 12.5px;
+    color: #9aa0ab;
+}
+
+.board-form {
+    max-width: 480px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.board-form textarea {
+    min-height: 110px;
+}
+
+/* Yetkili musteri e-postalari icin tek satirlik chip girdisi: yazilan her
+   eposta "+" ile (ya da Enter/virgul ile) bir chip'e donusur, gercek deger
+   gizli textarea'ya satir satir yazilir (sunucu tarafi degismeden calisir). */
+.board-email-chip-input {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+    width: 100%;
+    min-height: 44px;
+    padding: 6px 8px;
+    border: 1px solid #d0d5dd;
+    border-radius: 8px;
+    background: #fff;
+    transition: border-color 0.1s ease, box-shadow 0.1s ease;
+}
+
+.board-email-chip-input:focus-within {
+    border-color: var(--brand-blue);
+    box-shadow: 0 0 0 3px rgba(35, 85, 133, 0.12);
+}
+
+.board-email-chip-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 8px;
+}
+
+.board-email-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 12.5px;
+    font-weight: 600;
+    padding: 4px 6px 4px 10px;
+    border-radius: 12px;
+    white-space: nowrap;
+    background: rgba(35, 85, 133, 0.1);
+    color: var(--brand-blue);
+}
+
+
+.board-email-chip-remove {
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    font-size: 14px;
+    line-height: 1;
+    color: inherit;
+    padding: 0;
+    opacity: 0.7;
+}
+
+.board-email-chip-remove:hover {
+    opacity: 1;
+}
+
+.board-email-chip-textinput {
+    flex: 1 1 160px;
+    min-width: 160px;
+    border: none;
+    outline: none;
+    font-size: 13.5px;
+    padding: 4px 2px;
+    background: transparent;
+}
+
+.board-email-chip-add-btn {
+    flex-shrink: 0;
+    width: 26px;
+    height: 26px;
+    border: none;
+    border-radius: 7px;
+    background: var(--brand-blue);
+    color: #fff;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+}
+
+.board-email-chip-add-btn svg {
+    width: 15px;
+    height: 15px;
+}
+
+.board-email-chip-add-btn:hover {
+    opacity: 0.9;
+}
+
+.board-columns {
+    display: flex;
+    gap: 16px;
+    align-items: flex-start;
+    overflow-x: auto;
+    padding-bottom: 8px;
+    cursor: grab;
+}
+
+/* Bos alana sol klikle basili tutup fare ile sola-saga surukleyerek de
+   kaydirma yapilabilir (scroll bar'a bagimli kalinmaz); .js-pan-scrolling
+   surukleme sirasinda board-pan-scroll.js tarafindan eklenir/kaldirilir. */
+.board-columns.js-pan-scrolling,
+.board-columns--scrollable.js-pan-scrolling {
+    cursor: grabbing;
+    user-select: none;
+}
+
+.board-columns--scrollable {
+    cursor: grab;
+}
+
+.board-column {
+    flex: 1 1 0;
+    min-width: 0;
+    background: #f7f8fb;
+    border: 1px solid #eceef2;
+    border-radius: 12px;
+    padding: 14px;
+}
+
+.board-column {
+    transition: flex-basis 0.15s ease, width 0.15s ease;
+}
+
+.board-column-header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 12px;
+}
+
+.board-column-title {
+    flex: 1 1 auto;
+    font-size: 14px;
+    font-weight: 700;
+    margin: 0;
+    color: #344054;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.board-column-collapse-btn {
+    border: none;
+    background: transparent;
+    color: #667085;
+    width: 22px;
+    height: 22px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 6px;
+    cursor: pointer;
+    flex-shrink: 0;
+}
+
+.board-column-collapse-btn svg {
+    width: 15px;
+    height: 15px;
+}
+
+.board-column-icon {
+    width: 16px;
+    height: 16px;
+    flex-shrink: 0;
+    color: #667085;
+}
+
+.board-collapse-icon-collapsed {
+    display: none;
+}
+
+.board-column.collapsed .board-collapse-icon-expanded {
+    display: none;
+}
+
+.board-column.collapsed .board-collapse-icon-collapsed {
+    display: block;
+}
+
+.board-column-collapse-btn:hover {
+    background: rgba(0, 0, 0, 0.06);
+}
+
+.board-column-menu {
+    position: relative;
+    flex-shrink: 0;
+}
+
+.board-column-menu-trigger {
+    list-style: none;
+    cursor: pointer;
+    width: 22px;
+    height: 22px;
+    border-radius: 6px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: #667085;
+    font-size: 16px;
+    line-height: 1;
+}
+
+.board-column-menu-trigger::-webkit-details-marker {
+    display: none;
+}
+
+.board-column-menu-trigger:hover {
+    background: rgba(0, 0, 0, 0.06);
+}
+
+.board-column-menu-panel {
+    position: absolute;
+    right: 0;
+    top: 26px;
+    z-index: 20;
+    background: #fff;
+    border: 1px solid #eceef2;
+    border-radius: 10px;
+    box-shadow: 0 8px 24px rgba(20, 24, 33, 0.14);
+    padding: 12px;
+    width: 200px;
+}
+
+.board-column-menu-title {
+    font-size: 12px;
+    font-weight: 600;
+    color: #475467;
+    margin-bottom: 8px;
+}
+
+.board-column-color-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.board-column-color-form {
+    display: contents;
+}
+
+.board-column-color-swatch {
+    width: 26px;
+    height: 26px;
+    border-radius: 7px;
+    border: 2px solid rgba(15, 23, 42, 0.08);
+    cursor: pointer;
+    padding: 0;
+    background: #f7f8fb;
+}
+
+.board-column-color-swatch-none {
+    background-image: linear-gradient(45deg, transparent 45%, #dc3545 45%, #dc3545 55%, transparent 55%);
+}
+
+.board-column-color-swatch.selected {
+    border-color: #344054;
+}
+
+/* Bes kart sonrasi liste tasmasin diye kolon govdesi kendi icinde kaydirilir
+   (baslik/sayac sabit kalir, sadece kart listesi scroll olur). */
+.board-column-body {
+    max-height: 500px;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding-right: 4px;
+    margin-right: -4px;
+}
+
+.board-column-body::-webkit-scrollbar {
+    width: 8px;
+}
+
+.board-column-body::-webkit-scrollbar-thumb {
+    background: rgba(15, 23, 42, 0.18);
+    border-radius: 8px;
+}
+
+.board-column-body::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.board-column.collapsed {
+    flex: 0 0 48px;
+    width: 48px;
+    min-width: 48px;
+    padding: 10px 8px;
+    display: flex;
+    align-items: flex-start;
+}
+
+.board-column.collapsed .board-column-body,
+.board-column.collapsed .board-column-count,
+.board-column.collapsed .board-column-menu {
+    display: none;
+}
+
+.board-column.collapsed .board-column-header {
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+}
+
+.board-column.collapsed .board-column-icon {
+    display: none;
+}
+
+.board-column.collapsed .board-column-title {
+    writing-mode: vertical-rl;
+    text-orientation: mixed;
+    white-space: normal;
+    overflow: visible;
+}
+
+.board-column-count {
+    font-size: 11.5px;
+    font-weight: 600;
+    background: var(--neutral-chip-bg);
+    color: var(--neutral-chip-text);
+    padding: 1px 8px;
+    border-radius: 10px;
+}
+
+.board-card {
+    position: relative;
+    background: #fff;
+    border: 1px solid #eceef2;
+    border-radius: 10px;
+    padding: 12px 14px;
+    padding-right: 32px;
+    margin-bottom: 10px;
+    transition: border-color 0.1s ease, transform 0.2s ease, opacity 0.2s ease;
+}
+
+.board-card:hover {
+    border: 2px solid var(--brand-blue);
+    padding: 11px 13px;
+    padding-right: 31px;
+}
+
+.board-card[draggable="true"] {
+    cursor: grab;
+}
+
+.board-card.dragging {
+    opacity: 0.5;
+}
+
+/* "İstatistiklerim" sayfasindaki cekmecelerden gelinen kart vurgusu; secili
+   gibi renkli bir sinir gosterir (bkz. Details.cshtml, ?highlightCardId=...). */
+.board-card.board-card-highlighted {
+    border: 2px solid var(--brand-blue);
+    box-shadow: 0 0 0 3px rgba(35, 85, 133, 0.18);
+}
+
+.board-column.drag-over {
+    outline: 2px dashed var(--brand-blue);
+    outline-offset: -4px;
+    background-color: rgba(35, 85, 133, 0.06);
+}
+
+/* Surukleme sirasinda kartin birakilacagi yeri gosteren bosluk; diger kartlar
+   buna yer acmak icin FLIP animasyonuyla kayar (bkz. board-drag-drop.js). */
+.board-card-placeholder {
+    box-sizing: border-box;
+    border: 2px dashed var(--brand-blue);
+    border-radius: 10px;
+    margin-bottom: 10px;
+    background: rgba(35, 85, 133, 0.06);
+}
+
+/* Kart, sunucudan yeni haliyle gelip yer tuttugunda kucuk bir "oturma"
+   efektiyle belirir (yerlestigi anda hafifce buyuyup tam opaklaga gelir). */
+.board-card-settling {
+    transform: scale(0.94);
+    opacity: 0;
+}
+
+.board-card.elevated {
+    box-shadow: 0 20px 48px rgba(15, 23, 42, 0.28);
+    z-index: 60;
+}
+
+.board-card-edit-btn {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    width: 22px;
+    height: 22px;
+    border: none;
+    background: transparent;
+    color: #9aa0ab;
+    border-radius: 6px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+}
+
+.board-card-edit-btn svg {
+    width: 13px;
+    height: 13px;
+}
+
+.board-card-edit-btn:hover {
+    background: rgba(0, 0, 0, 0.06);
+    color: #475467;
+}
+
+/* Mühendisin karti "üstüne alma"/"üstünden birakma" ikonu (bkz.
+   _BoardCardItem.cshtml / _GenericBoardCardItem.cshtml). Duzenle (kalem)
+   ikonuyla ayni gorunumde ama kartin sol ust kosesinde; bu yuzden ikon
+   varken karta ekstra sol bosluk (.has-claim-action) reserve edilir. */
+.board-card.has-claim-action {
+    padding-left: 32px;
+}
+
+.board-card.has-claim-action:hover {
+    padding-left: 31px;
+}
+
+.board-card-claim-form {
+    position: absolute;
+    top: 8px;
+    left: 8px;
+    margin: 0;
+    z-index: 2;
+}
+
+.board-card-claim-btn {
+    width: 22px;
+    height: 22px;
+    padding: 0;
+    border: none;
+    background: transparent;
+    color: #9aa0ab;
+    border-radius: 6px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+}
+
+.board-card-claim-btn svg {
+    width: 13px;
+    height: 13px;
+}
+
+.board-card-claim-btn:hover {
+    background: rgba(0, 0, 0, 0.06);
+    color: var(--brand-blue, #235585);
+}
+
+.board-card-claim-btn:disabled {
+    cursor: not-allowed;
+    opacity: 0.4;
+}
+
+.board-card-claim-btn:disabled:hover {
+    background: transparent;
+    color: #9aa0ab;
+}
+
+/* Karti uzerine alan mühendisin rozeti: kartta her zaman yer kaplamasin diye
+   varsayilan olarak gizli, sadece kart uzerine gelininde (hover) belirir.
+   Kartin kendi kutusu icinde (negatif ofset kullanmadan) konumlanir; aksi
+   halde pano kolonu icindeki dikey scroll (overflow-y:auto) rozeti kirpardi. */
+.board-card-assignee-tooltip {
+    position: absolute;
+    top: 8px;
+    right: 34px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--brand-blue, #235585);
+    color: #fff;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 4px 10px 4px 4px;
+    border-radius: 999px;
+    box-shadow: 0 4px 10px rgba(15, 23, 42, 0.18);
+    max-width: calc(100% - 44px);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    z-index: 5;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.15s ease, visibility 0.15s;
+    pointer-events: none;
+}
+
+.board-card-assignee-tooltip .avatar-circle {
+    width: 18px;
+    height: 18px;
+    font-size: 9px;
+    flex-shrink: 0;
+    /* Avatar renk paletindeki bazi tonlar (koyu maviler) rozetin
+       kendi arkaplaniyla (var(--brand-blue)) birebir ayni; bu yuzden rengi
+       ne olursa olsun avatari rozet zemininden ayiran hafif bir cerceve
+       ekleniyor (Burak Yıldırım gibi isimlerde avatar gorunmez oluyordu). */
+    box-shadow: 0 0 0 1.5px rgba(255, 255, 255, 0.85);
+}
+
+.board-card:hover .board-card-assignee-tooltip {
+    opacity: 1;
+    visibility: visible;
+}
+
+.board-card-labels {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-bottom: 6px;
+}
+
+.board-card-label-strip {
+    font-size: 11px;
+    font-weight: 600;
+    color: rgba(0, 0, 0, 0.65);
+    padding: 3px 10px;
+    border-radius: 6px;
+    min-width: 24px;
+    min-height: 8px;
+    line-height: 1.3;
+}
+
+.board-card-title {
+    font-weight: 600;
+    font-size: 13.5px;
+    color: #1a2333;
+    margin-bottom: 4px;
+}
+
+.board-card-desc {
+    font-size: 12.5px;
+    color: #475467;
+    white-space: pre-wrap;
+    margin-bottom: 8px;
+}
+
+.board-card-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 8px;
+}
+
+.board-card-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+/* Aciklama gerektiren tasima secenekleri (ör. UAT Review -> Requirement
+   Discussion reddi) bir <details> acilir menusu icinde gosteriliyor; bu
+   .board-card-actions'in flex satirinda diger butonlarla yan yana kalirsa
+   (ozellikle metni uzun secenekler icin) acilan aciklama kutusu kartin/
+   kolonun sagindan tasiyordu. Acik detay her zaman kendi satirina gecsin ve
+   genisligi kartin/kolonun genisligini asmasin diye tam satir genisligi
+   veriliyor. */
+.board-card-actions details {
+    flex: 1 1 100%;
+    min-width: 0;
+}
+
+/* ---- "Pano Görevlerim" karti uzerindeki aksiyon butonlari ----
+   ("Panoya Git", sonraki listeye tasima secenekleri, "Üstümden Bırak")
+   Sayfa basligindaki .board-header-btn ile ayni dili konusur; sadece kart
+   icinde durdugu icin bir tik daha kucuktur. Ayni isaretleme "İstatistiklerim"
+   sayfasindaki gomulu kart listesinde de kullanilir (bkz. MyTasks.cshtml). */
+.board-task-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 7px 13px;
+    border: 1px solid var(--sidebar-border);
+    border-radius: 8px;
+    background: var(--sidebar-bg);
+    color: var(--sidebar-text-active);
+    font-size: 12.5px;
+    font-weight: 600;
+    line-height: 1;
+    white-space: nowrap;
+    text-decoration: none;
+    cursor: pointer;
+    transition: background 0.14s ease, border-color 0.14s ease, color 0.14s ease, box-shadow 0.14s ease, transform 0.14s ease;
+}
+
+.board-task-btn svg {
+    width: 15px;
+    height: 15px;
+    flex-shrink: 0;
+}
+
+.board-task-btn:hover {
+    background: #dce5f0;
+    border-color: #c3cfdf;
+    color: var(--brand-blue-dark);
+    text-decoration: none;
+    box-shadow: 0 2px 6px rgba(35, 85, 133, 0.12);
+}
+
+.board-task-btn:active {
+    transform: translateY(1px);
+    box-shadow: none;
+}
+
+.board-task-btn:focus-visible {
+    outline: 2px solid rgba(35, 85, 133, 0.45);
+    outline-offset: 2px;
+}
+
+/* Ilerletici/onaylayici tasima: navbar mavisiyle dolu. */
+.board-task-btn-primary {
+    background: var(--topbar-bg);
+    border-color: var(--topbar-bg);
+    color: #fff;
+}
+
+.board-task-btn-primary:hover {
+    background: var(--brand-blue-dark);
+    border-color: var(--brand-blue-dark);
+    color: #fff;
+    box-shadow: 0 2px 8px rgba(35, 85, 133, 0.28);
+}
+
+/* Reddetme / gorevi birakma: yumusak kirmizi cerceve, dolu degil -- boylece
+   asil vurgu ilerletici butonda kalir. */
+.board-task-btn-danger {
+    background: #fff;
+    border-color: #f0c4c9;
+    color: #c0392f;
+}
+
+.board-task-btn-danger:hover {
+    background: #fdf1f2;
+    border-color: #dc3545;
+    color: #b02a37;
+    box-shadow: 0 2px 6px rgba(220, 53, 69, 0.14);
+}
+
+.board-task-btn-danger:focus-visible {
+    outline-color: rgba(220, 53, 69, 0.45);
+}
+
+.board-task-btn:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+}
+
+.board-task-btn:disabled:hover {
+    background: #fff;
+    border-color: #f0c4c9;
+    color: #c0392f;
+    box-shadow: none;
+}
+
+.board-task-btn:disabled:active {
+    transform: none;
+}
+
+/* Yon oku, uzerine gelince hedefe dogru hafifce kayar. */
+.board-task-btn-move:hover svg {
+    transform: translateX(2px);
+}
+
+.board-task-btn-move svg {
+    transition: transform 0.14s ease;
+}
+
+/* "Üstümden Bırak" satirin sonuna itilir: ilerletici secenekler solda
+   gruplanir, geri adim sagda ayrisir. */
+.board-task-release-form {
+    margin-left: auto;
+}
+
+/* Buton satiri kart metninden ince bir cizgiyle ayrilir (sadece "Pano
+   Görevlerim" kartlarinda; pano kolonlarindaki kartlar etkilenmez). */
+.board-task-actions {
+    align-items: center;
+    margin-top: 12px;
+    padding-top: 10px;
+    border-top: 1px solid #eef1f5;
+}
+
+.board-empty-note {
+    color: #9aa0ab;
+    font-size: 12.5px;
+    padding: 6px 2px;
+}
+
+/* .board-reject-form kaldirildi: gerekce artik kartin icindeki acilir
+   textarea'da degil, ortak onay penceresinde (bkz. ui-dialog.js) soruluyor. */
+
+/* ---- Kart Ekle (kolon altinda) ---- */
+.board-add-card-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    width: 100%;
+    border: none;
+    background: transparent;
+    color: #667085;
+    font-size: 13px;
+    font-weight: 600;
+    padding: 8px 10px;
+    border-radius: 8px;
+    cursor: pointer;
+    text-align: left;
+}
+
+.board-add-card-btn svg {
+    width: 15px;
+    height: 15px;
+    flex-shrink: 0;
+}
+
+.board-add-card-btn:hover {
+    background: rgba(15, 23, 42, 0.08);
+    color: #1a2333;
+}
+
+.board-add-card-form {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.board-add-card-form textarea {
+    min-height: 50px;
+}
+
+.board-add-card-form-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.board-add-card-close-btn {
+    width: 30px;
+    height: 30px;
+    border: none;
+    background: transparent;
+    color: #9aa0ab;
+    border-radius: 8px;
+    font-size: 18px;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.board-add-card-close-btn:hover {
+    background: rgba(0, 0, 0, 0.06);
+    color: #475467;
+}
+
+/* ---- Kart duzenle overlay'i (kart on plana gelir + yan panel) ---- */
+.board-card-overlay-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.45);
+    z-index: 55;
+}
+
+.board-card-menu-panel-container {
+    position: fixed;
+    z-index: 60;
+    width: 280px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+/* Panel gorunur alana sigmadiginda icerik SIKISMAMALI, panel kendi icinde
+   kaymali; flex ogeleri varsayilan olarak kucululdugu icin acikca kapatiyoruz
+   (konumlandirma icin bkz. board-card-menu.js -> positionPanel). */
+.board-card-menu-panel-container > * {
+    flex-shrink: 0;
+}
+
+/* Etiket listesi/duzenleyici gibi birden fazla bolumden olusan panolar,
+   aralarinda bosluk olan ayri kutucuklar yerine TEK bir surekli arkaplan
+   uzerinde gosterilir. */
+.board-card-menu-surface {
+    background: #fff;
+    border-radius: 10px;
+    box-shadow: 0 8px 24px rgba(20, 24, 33, 0.14);
+    padding: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.board-card-menu-header {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    flex-shrink: 0;
+    padding: 0 28px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #eceef2;
+}
+
+.board-card-menu-title {
+    font-size: 13.5px;
+    font-weight: 700;
+    color: #1a2333;
+}
+
+/* Etiket duzenleyicide basliktaki geri (caret) ikonu: etiket listesine doner.
+   Kapat butonunun aynasidir, solda konumlanir. */
+.board-card-menu-back-btn {
+    position: absolute;
+    left: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    padding: 0;
+    border: none;
+    background: transparent;
+    color: #9aa0ab;
+    border-radius: 6px;
+    cursor: pointer;
+}
+
+.board-card-menu-back-btn svg {
+    width: 15px;
+    height: 15px;
+}
+
+.board-card-menu-back-btn:hover {
+    background: rgba(0, 0, 0, 0.06);
+    color: #344054;
+}
+
+.board-card-menu-close-btn {
+    position: absolute;
+    right: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 24px;
+    height: 24px;
+    border: none;
+    background: transparent;
+    color: #9aa0ab;
+    border-radius: 6px;
+    font-size: 18px;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.board-card-menu-close-btn:hover {
+    background: rgba(0, 0, 0, 0.06);
+    color: #475467;
+}
+
+.board-card-menu-options {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 6px;
+}
+
+.board-card-menu-option {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    align-self: flex-start;
+    max-width: 100%;
+    background: #fff;
+    border: none;
+    border-radius: 8px;
+    padding: 9px 14px;
+    font-size: 13px;
+    color: #344054;
+    box-shadow: 0 2px 8px rgba(20, 24, 33, 0.08);
+    cursor: pointer;
+}
+
+.board-card-menu-option svg {
+    width: 15px;
+    height: 15px;
+    flex-shrink: 0;
+    color: #667085;
+}
+
+.board-card-menu-option:hover {
+    background: #f2f4f7;
+}
+
+.board-card-menu-option-danger {
+    color: #b42318;
+}
+
+.board-card-menu-option-danger svg {
+    color: #b42318;
+}
+
+.board-card-menu-option-danger:hover {
+    background: #fef3f2;
+}
+
+.board-card-menu-option:disabled {
+    cursor: not-allowed;
+    opacity: 0.45;
+}
+
+.board-card-menu-option:disabled:hover {
+    background: #fff;
+}
+
+/* ---- Etiket listesi paneli ---- */
+.board-label-search {
+    width: 100%;
+    border: 1.5px solid #e4e7ec;
+    border-radius: 8px;
+    padding: 8px 12px;
+    font-size: 13px;
+    background: #fff;
+    flex-shrink: 0;
+}
+
+.board-label-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.board-label-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+/* Etiket satirinin solundaki secim kutucugu: isaretli olan etiket kartta gorunur
+   (bkz. BoardLabels.IsSelected / BoardController.ToggleLabel). */
+.board-label-check {
+    display: flex;
+    align-items: center;
+    flex-shrink: 0;
+    cursor: pointer;
+    margin: 0;
+}
+
+.board-label-checkbox {
+    flex-shrink: 0;
+    width: 16px;
+    height: 16px;
+    cursor: pointer;
+}
+
+.board-label-strip {
+    flex: 1 1 auto;
+    min-height: 32px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    padding: 0 10px;
+    font-size: 12.5px;
+    font-weight: 600;
+    color: rgba(0, 0, 0, 0.65);
+}
+
+.board-label-strip-lg {
+    min-height: 40px;
+    font-size: 13.5px;
+}
+
+.board-label-edit-btn {
+    flex-shrink: 0;
+    width: 26px;
+    height: 26px;
+    border: none;
+    background: transparent;
+    color: #9aa0ab;
+    border-radius: 6px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+}
+
+.board-label-edit-btn svg {
+    width: 13px;
+    height: 13px;
+}
+
+.board-label-edit-btn:hover {
+    background: rgba(0, 0, 0, 0.06);
+    color: #475467;
+}
+
+.board-label-create-btn {
+    background: #fff;
+    border: 1.5px dashed #d0d5dd;
+    border-radius: 8px;
+    padding: 9px 14px;
+    font-size: 13px;
+    color: #475467;
+    cursor: pointer;
+    text-align: left;
+}
+
+.board-label-create-btn:hover {
+    background: #f8f9fb;
+    border-color: var(--brand-blue);
+}
+
+/* ---- Etiket duzenleme paneli ---- */
+.board-label-preview-row {
+    padding-bottom: 4px;
+}
+
+.board-label-editor-form {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.board-label-editor-heading {
+    font-size: 11.5px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #9aa0ab;
+    margin-bottom: 6px;
+}
+
+.board-label-color-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.board-label-color-swatch {
+    width: 30px;
+    height: 30px;
+    border-radius: 7px;
+    border: 2px solid transparent;
+    cursor: pointer;
+    padding: 0;
+}
+
+.board-label-color-swatch.selected {
+    border-color: #1a2333;
+}
+
+.board-label-remove-from-card-btn {
+    align-self: flex-start;
+    background: transparent;
+    border: none;
+    color: #475467;
+    font-size: 13px;
+    text-decoration: underline;
+    cursor: pointer;
+    padding: 0;
+}
+
+.board-label-editor-actions {
+    display: flex;
+    justify-content: space-between;
+}
+
+/* ---- Kart kapagi (kart uzerinde) ---- */
+/* .board-card sag tarafta duzenle butonu icin fazladan dolgu kullaniyor
+   (padding-right: 32px / hover'da 31px); kapak seridi/afisi kartin tam
+   genisliginde olmali, bu yuzden sag kenar bosluk miktari sol/ust'tan farkli. */
+.board-card-cover {
+    margin: -12px -32px 8px -14px;
+    border-top-left-radius: 9px;
+    border-top-right-radius: 9px;
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+}
+
+.board-card:hover .board-card-cover {
+    margin: -11px -31px 8px -13px;
+}
+
+/* Karti "üstüne alma/birakma" ikonu gorunen muhendiste kartin sol dolgusu
+   32px'e cikiyor (.has-claim-action); kapak marjini da buna esitlemezsek kapak
+   sol ust kosede 18px disarida kalir ve karti tam kaplamamis gorunur. Kartin
+   sahibi olan muhendis bu ikonu gordugu icin sorun yalnizca onda ortaya
+   cikiyordu. */
+.board-card.has-claim-action .board-card-cover {
+    margin-left: -32px;
+}
+
+.board-card.has-claim-action:hover .board-card-cover {
+    margin-left: -31px;
+}
+
+.board-card-cover-color {
+    height: 16px;
+}
+
+.board-card-cover-image {
+    height: 110px;
+}
+
+/* ---- Kapak paneli ---- */
+.board-cover-section {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.board-cover-section-heading {
+    font-size: 11.5px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #9aa0ab;
+    text-align: left;
+}
+
+.board-cover-color-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.board-cover-color-swatch {
+    width: 30px;
+    height: 30px;
+    border-radius: 7px;
+    border: 2px solid transparent;
+    cursor: pointer;
+    padding: 0;
+}
+
+.board-cover-color-swatch.selected {
+    border-color: #1a2333;
+}
+
+.board-cover-remove-btn {
+    align-self: flex-start;
+    background: transparent;
+    border: none;
+    color: #475467;
+    font-size: 12.5px;
+    text-decoration: underline;
+    cursor: pointer;
+    padding: 0;
+}
+
+.board-cover-upload-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    align-self: stretch;
+    background: #fff;
+    border: none;
+    border-radius: 8px;
+    padding: 9px 14px;
+    font-size: 13px;
+    color: #344054;
+    box-shadow: 0 2px 8px rgba(20, 24, 33, 0.08);
+    cursor: pointer;
+}
+
+.board-cover-upload-btn svg {
+    width: 15px;
+    height: 15px;
+    flex-shrink: 0;
+    color: #667085;
+}
+
+.board-cover-upload-btn:hover {
+    background: #f2f4f7;
+}
+
+.board-cover-preset-heading {
+    font-size: 12px;
+    color: #667085;
+}
+
+.board-cover-preset-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 6px;
+}
+
+.board-cover-preset-thumb {
+    height: 44px;
+    border-radius: 6px;
+    border: 2px solid transparent;
+    background-size: cover;
+    background-position: center;
+    cursor: pointer;
+    padding: 0;
+}
+
+.board-cover-preset-thumb.selected {
+    border-color: #1a2333;
+}
+
+/* ---- Arsiv Kutusu sayfasi ---- */
+.board-archive-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.board-archive-item {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    background: #fff;
+    border: 1px solid #eceef2;
+    border-radius: 10px;
+    padding: 12px 14px;
+}
+
+.board-archive-item-cover {
+    width: 64px;
+    height: 64px;
+    border-radius: 8px;
+    flex-shrink: 0;
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+}
+
+.board-archive-item-body {
+    flex: 1;
+    min-width: 0;
+}
+
+.board-archive-item-title {
+    font-weight: 600;
+    font-size: 13.5px;
+    color: #1a2333;
+    margin-bottom: 4px;
+}
+
+/* ---- Kart Detay Penceresi (Kartı Aç) ----
+   z-index notu: kucuk panel sistemi (.board-card-overlay-backdrop=55,
+   .board-card-menu-panel-container=60) bu pencerenin UZERINDE acilabilmeli
+   (kapak duzenle/daha fazla secenek/etiketler/eklenti kucuk pencereleri),
+   bu yuzden detay penceresinin arkaplani onlardan daha dusuk bir z-index
+   kullanir. */
+.board-card-detail-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.55);
+    z-index: 50;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    overflow-y: auto;
+}
+
+.board-card-detail-modal {
+    background: #fff;
+    border-radius: 12px;
+    width: min(920px, 100%);
+    max-height: calc(100vh - 48px);
+    overflow-y: auto;
+    box-shadow: 0 30px 80px rgba(15, 23, 42, 0.35);
+}
+
+.board-card-detail-modal-inner {
+    position: relative;
+}
+
+.board-card-detail-close-btn {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    z-index: 2;
+    width: 30px;
+    height: 30px;
+    border-radius: 8px;
+    border: none;
+    background: rgba(255, 255, 255, 0.9);
+    color: #344054;
+    font-size: 20px;
+    line-height: 1;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.board-card-detail-close-btn:hover {
+    background: #fff;
+}
+
+.board-card-detail-cover-wrap {
+    position: relative;
+    min-height: 220px;
+    border-top-left-radius: 12px;
+    border-top-right-radius: 12px;
+    background: #eef0f3;
+    overflow: hidden;
+}
+
+.board-card-detail-cover-wrap.no-cover {
+    min-height: 56px;
+}
+
+.board-card-detail-cover {
+    position: absolute;
+    inset: 0;
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+}
+
+.board-card-detail-cover-actions {
+    position: absolute;
+    top: 12px;
+    right: 52px;
+    display: flex;
+    gap: 8px;
+}
+
+.board-card-detail-icon-btn {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    border: none;
+    background: rgba(255, 255, 255, 0.92);
+    color: #344054;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+}
+
+.board-card-detail-icon-btn:hover {
+    background: #fff;
+}
+
+.board-card-detail-icon-btn svg {
+    width: 16px;
+    height: 16px;
+}
+
+.board-card-detail-body {
+    padding: 22px 28px 28px;
+}
+
+.board-card-detail-title {
+    font-size: 20px;
+    font-weight: 700;
+    color: #1a2333;
+    margin: 0 0 4px;
+}
+
+.board-card-detail-columns {
+    display: grid;
+    grid-template-columns: 1fr 320px;
+    gap: 24px;
+    margin-top: 18px;
+    align-items: start;
+}
+
+.board-card-detail-right {
+    border-left: 2px solid #d0d5dd;
+    padding-left: 22px;
+}
+
+.board-card-detail-left,
+.board-card-detail-right {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    min-width: 0;
+}
+
+.board-card-detail-row-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    align-self: flex-start;
+    background: #eef0f3;
+    border: none;
+    border-radius: 8px;
+    padding: 8px 12px;
+    font-size: 13px;
+    color: #344054;
+    cursor: pointer;
+}
+
+.board-card-detail-row-btn:hover {
+    background: #e4e7ec;
+}
+
+.board-card-detail-row-btn svg {
+    width: 14px;
+    height: 14px;
+    color: #667085;
+    flex-shrink: 0;
+}
+
+.board-card-detail-attachments-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.board-attachment-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    background: #f9fafb;
+    border: 1px solid #eceef2;
+    border-radius: 8px;
+    padding: 7px 10px;
+}
+
+.board-attachment-link {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #344054;
+    text-decoration: none;
+    font-size: 12.5px;
+    min-width: 0;
+    overflow: hidden;
+}
+
+.board-attachment-link span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.board-attachment-link svg {
+    width: 14px;
+    height: 14px;
+    flex-shrink: 0;
+    color: #667085;
+}
+
+.board-attachment-remove-btn {
+    border: none;
+    background: transparent;
+    color: #9aa0ab;
+    font-size: 16px;
+    line-height: 1;
+    cursor: pointer;
+    flex-shrink: 0;
+    width: 20px;
+    height: 20px;
+    border-radius: 6px;
+}
+
+.board-attachment-remove-btn:hover {
+    background: rgba(0, 0, 0, 0.06);
+    color: #475467;
+}
+
+.board-attachment-item.is-pending {
+    border-style: dashed;
+    background: #fffbea;
+}
+
+.board-attachment-link-pending {
+    cursor: default;
+}
+
+.board-card-detail-desc-section {
+    margin-top: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.board-card-detail-section-heading {
+    font-size: 12.5px;
+    font-weight: 700;
+    color: #667085;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    text-align: left;
+}
+
+.board-card-detail-desc-actions {
+    display: flex;
+    gap: 8px;
+}
+
+/* ---- Zengin metin kutusu (Aciklama + Yorumlar ortak) ---- */
+.board-rte {
+    border: 1.5px solid #e4e7ec;
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.board-rte-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 6px 8px;
+    background: #f9fafb;
+    border-bottom: 1px solid #eceef2;
+    flex-wrap: wrap;
+}
+
+.board-rte-format-select {
+    font-size: 12px;
+    border: 1px solid #e4e7ec;
+    border-radius: 6px;
+    padding: 4px 6px;
+    background: #fff;
+    color: #344054;
+}
+
+.board-rte-btn {
+    width: 26px;
+    height: 26px;
+    border: none;
+    background: transparent;
+    border-radius: 6px;
+    color: #344054;
+    font-size: 13px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.board-rte-btn:hover {
+    background: #eceef2;
+}
+
+.board-rte-btn svg {
+    width: 14px;
+    height: 14px;
+}
+
+.board-rte-content {
+    min-height: 90px;
+    max-height: 260px;
+    overflow-y: auto;
+    padding: 10px 12px;
+    font-size: 13px;
+    color: #344054;
+    line-height: 1.5;
+}
+
+.board-rte-content:focus {
+    outline: none;
+}
+
+.board-rte-content h1 { font-size: 19px; margin: 0.4em 0; }
+.board-rte-content h2 { font-size: 16px; margin: 0.4em 0; }
+.board-rte-content h3 { font-size: 14px; margin: 0.4em 0; }
+.board-rte-content p { margin: 0 0 0.5em; }
+.board-rte-content ul,
+.board-rte-content ol { margin: 0 0 0.5em 1.2em; }
+
+.board-rte-content code {
+    background: #eef0f3;
+    padding: 1px 5px;
+    border-radius: 4px;
+    font-family: 'SFMono-Regular', Consolas, monospace;
+    font-size: 12px;
+}
+
+.board-rte-content a {
+    color: var(--brand-blue);
+}
+
+.board-rte-content img {
+    max-width: 100%;
+    border-radius: 6px;
+}
+
+/* ---- Yorumlar ---- */
+.board-comment-composer {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.board-comment-placeholder {
+    border: 1.5px solid #e4e7ec;
+    border-radius: 8px;
+    padding: 8px 12px;
+    font-size: 13px;
+    color: #9aa0ab;
+    cursor: text;
+}
+
+.board-comment-rte .board-rte-content {
+    min-height: 70px;
+}
+
+.board-comment-save-btn {
+    align-self: flex-start;
+}
+
+.board-comments-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-top: 6px;
+}
+
+.board-comment-item {
+    border-bottom: 1px solid #f1f2f4;
+    padding-bottom: 10px;
+}
+
+.board-comment-meta {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 4px;
+    flex-wrap: wrap;
+}
+
+.board-comment-author {
+    font-weight: 600;
+    font-size: 12.5px;
+    color: #1a2333;
+}
+
+.board-comment-date {
+    font-size: 11.5px;
+    color: #9aa0ab;
+}
+
+.board-comment-body {
+    font-size: 12.5px;
+    color: #344054;
+    line-height: 1.5;
+}
+
+.board-comment-body p {
+    margin: 0 0 0.4em;
+}
+
+.board-comment-edit-btn {
+    border: none;
+    background: transparent;
+    color: #9aa0ab;
+    width: 20px;
+    height: 20px;
+    border-radius: 6px;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin-left: auto;
+}
+
+.board-comment-edit-btn:hover {
+    background: rgba(0, 0, 0, 0.06);
+    color: #475467;
+}
+
+.board-comment-edit-btn svg {
+    width: 12px;
+    height: 12px;
+}
+
+.board-comment-edit-rte {
+    margin-top: 6px;
+}
+
+.board-comment-edit-actions {
+    margin-top: 6px;
+}
+
+.board-comment-footer {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 6px;
+}
+
+.board-comment-reactions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+}
+
+.board-comment-reaction-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    border: 1px solid #e4e7ec;
+    background: #f9fafb;
+    border-radius: 999px;
+    padding: 2px 8px;
+    font-size: 12px;
+    cursor: pointer;
+    color: #344054;
+}
+
+.board-comment-reaction-chip.mine {
+    border-color: var(--brand-blue);
+    background: #eaf1ff;
+}
+
+.board-comment-reaction-count {
+    font-size: 11px;
+    color: #667085;
+}
+
+.board-comment-react-btn {
+    border: none;
+    background: transparent;
+    color: #9aa0ab;
+    width: 22px;
+    height: 22px;
+    border-radius: 6px;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.board-comment-react-btn:hover {
+    background: rgba(0, 0, 0, 0.06);
+    color: #475467;
+}
+
+.board-comment-react-btn svg {
+    width: 15px;
+    height: 15px;
+}
+
+.board-reaction-picker {
+    position: absolute;
+    top: calc(100% + 4px);
+    left: 0;
+    z-index: 3;
+    display: flex;
+    gap: 2px;
+    background: #fff;
+    border-radius: 999px;
+    box-shadow: 0 8px 24px rgba(20, 24, 33, 0.18);
+    padding: 4px 6px;
+}
+
+.board-reaction-picker-emoji {
+    border: none;
+    background: transparent;
+    font-size: 17px;
+    line-height: 1;
+    padding: 4px;
+    border-radius: 999px;
+    cursor: pointer;
+}
+
+.board-reaction-picker-emoji:hover {
+    background: #f2f4f7;
+    transform: scale(1.15);
+}
+
+@media (max-width: 760px) {
+    .board-card-detail-columns {
+        grid-template-columns: 1fr;
+    }
+
+    .board-card-detail-right {
+        border-left: none;
+        padding-left: 0;
+        border-top: 2px solid #d0d5dd;
+        padding-top: 18px;
+    }
+}
+
+/* ------------------------------------------------------------------ */
+/* Pano sablonlari: Klasik disindaki sablonlar liste sayisi degisken   */
+/* oldugu icin sabit genislikli kolonlar + yatay kaydirma kullanir.    */
+/* Klasik'in kendi .board-columns/.board-column kurallarina dokunmaz.  */
+/* ------------------------------------------------------------------ */
+
+.board-columns--scrollable {
+    display: flex;
+    gap: 16px;
+    align-items: flex-start;
+    overflow-x: auto;
+    padding-bottom: 8px;
+}
+
+.board-columns--scrollable .board-column {
+    flex: 0 0 300px;
+    width: 300px;
+}
+
+.board-columns--scrollable .board-column.collapsed {
+    flex: 0 0 48px;
+    width: 48px;
+}
+
+.board-sprint-dots {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    margin-top: 18px;
+}
+
+.board-sprint-dot {
+    width: 11px;
+    height: 11px;
+    border-radius: 50%;
+    background: #d0d5dd;
+    border: 1px solid #b7c0cd;
+    display: inline-block;
+    text-decoration: none;
+    transition: background 0.15s ease, transform 0.15s ease;
+}
+
+.board-sprint-dot:hover {
+    transform: scale(1.2);
+}
+
+.board-sprint-dot.active {
+    background: #235585;
+    border-color: #235585;
+}
+
+.board-column-readonly {
+    opacity: 0.75;
+    pointer-events: none;
+}
+
+/* ------------------------------------------------------------------ */
+/* Yeni pano formu: form ustte tam genislik, sablon secici kutucuklar  */
+/* formun altinda, ayri bir bolum olarak (bkz. .board-template-grid). */
+/* ------------------------------------------------------------------ */
+
+.board-create-layout {
+    display: flex;
+    flex-direction: column;
+    gap: 32px;
+}
+
+.board-template-picker-title {
+    font-weight: 600;
+    margin-bottom: 12px;
+    color: #235585;
+}
+
+/* Sablon kutucuklari: bir satirda 3 tane (kucuk ekranlarda 2, sonra 1).
+   Kart basina hem gorsel hem baslik/aciklama sigdigi icin 3 sutun, 4'e
+   gore daha okunakli durdu. */
+.board-template-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+}
+
+@media (max-width: 900px) {
+    .board-template-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (max-width: 560px) {
+    .board-template-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+.board-template-card {
+    display: block;
+    border: 1.5px solid #d0d5dd;
+    border-radius: 10px;
+    padding: 12px;
+    cursor: pointer;
+    background: #fff;
+    text-decoration: none;
+    color: inherit;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    position: relative;
+}
+
+.board-template-card:hover {
+    border-color: #235585;
+}
+
+.board-template-card:has(.board-template-radio:checked),
+.board-template-card.selected {
+    border-color: #235585;
+    box-shadow: 0 0 0 2px rgba(35, 85, 133, 0.18);
+}
+
+.board-template-radio {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    z-index: 1;
+}
+
+.board-template-thumb {
+    height: 130px;
+    border-radius: 8px;
+    background: #ebf0f6;
+    overflow: hidden;
+    margin-bottom: 8px;
+}
+
+.board-template-thumb img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+.board-template-card-name {
+    font-weight: 600;
+    font-size: 14px;
+    color: #232a35;
+}
+
+.board-template-card-desc {
+    font-size: 12px;
+    color: #6b7280;
+    margin-top: 2px;
+}
+
+/* "Pano Sablonlarim" (Index.cshtml) icin: sablon kartinin ustune binen
+   onizle (goz) butonu. Kart <a>'siyla ic ice degil, kardes eleman olarak
+   konumlanir (bkz. Index.cshtml); boylece <a> icine gecersiz form/button
+   icicelemesi olmaz ve tiklama olay kabarcigi (bubbling) sorunu yasanmaz. */
+.board-template-card-wrap {
+    position: relative;
+}
+
+.board-template-preview-form {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    z-index: 2;
+    margin: 0;
+}
+
+.board-template-preview-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 30px;
+    border-radius: 999px;
+    border: none;
+    background: rgba(255, 255, 255, 0.92);
+    color: #235585;
+    cursor: pointer;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.18);
+    transition: background 0.15s ease, color 0.15s ease;
+}
+
+.board-template-preview-btn:hover {
+    background: #235585;
+    color: #fff;
+}
+
+.board-template-preview-btn svg {
+    width: 17px;
+    height: 17px;
+}
+
+/* Pano detayinda (Details.cshtml), aktif bir sablon onizlemesi gosterildiginde. */
+.board-preview-banner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+    background: #fff6e0;
+    border: 1px solid #e8c877;
+    border-radius: 8px;
+    padding: 10px 16px;
+    margin-bottom: 16px;
+    color: #6b4f10;
+    font-size: 14px;
+}
+
+.board-preview-banner form {
+    margin: 0;
+}

@@ -1,0 +1,20 @@
+@model (int BoardId, List<string> Emails)
+@if (Model.Emails.Any())
+{
+    <div class="board-authorized-emails-list">
+        @foreach (var email in Model.Emails)
+        {
+            <div class="board-authorized-email-row">
+                <span>@email</span>
+                <form asp-action="RemoveAuthorizedEmail" asp-route-boardId="@Model.BoardId" asp-route-email="@email" method="post" class="board-authorized-email-remove-form">
+                    @Html.AntiForgeryToken()
+                    <button type="submit" class="board-authorized-email-remove-btn" title="Kaldır" aria-label="Kaldır">&times;</button>
+                </form>
+            </div>
+        }
+    </div>
+}
+else
+{
+    <p class="text-muted board-authorized-emails-empty">Henüz yetkili e-posta yok.</p>
+}

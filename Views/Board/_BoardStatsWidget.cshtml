@@ -1,0 +1,41 @@
+@model CustomerBoardSummary
+
+<div class="board-stats-card">
+    <div class="board-stats-card-title">Panolarımda Neler Oluyor?</div>
+
+    <div class="board-stats-grid">
+        <div class="board-stats-item">
+            <div class="board-stats-value">@Model.TotalBoards</div>
+            <div class="board-stats-label">Toplam Pano</div>
+        </div>
+        <div class="board-stats-item">
+            <div class="board-stats-value">@Model.OpenCardCount</div>
+            <div class="board-stats-label">Açık Kart</div>
+        </div>
+        <div class="board-stats-item @(Model.PendingApprovalCount > 0 ? "board-stats-item-pending" : "")">
+            <div class="board-stats-value">@Model.PendingApprovalCount</div>
+            <div class="board-stats-label">Onayınızı Bekliyor</div>
+        </div>
+    </div>
+
+    @if (Model.RecentActivity.Any())
+    {
+        <div class="board-stats-activity-title">Son Hareketler</div>
+        <div class="board-stats-activity-list">
+            @foreach (var item in Model.RecentActivity)
+            {
+                <a class="board-stats-activity-item" asp-action="Details" asp-route-id="@item.BoardId">
+                    <div class="board-stats-activity-main">
+                        <span class="board-stats-activity-card">@item.CardTitle</span>
+                        <span class="board-stats-activity-badge">@item.ActionLabel</span>
+                    </div>
+                    <div class="board-stats-activity-meta">@item.BoardTitle &middot; @item.Timestamp.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</div>
+                </a>
+            }
+        </div>
+    }
+    else
+    {
+        <div class="board-stats-empty">Henüz bir hareket yok.</div>
+    }
+</div>

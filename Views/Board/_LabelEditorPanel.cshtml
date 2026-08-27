@@ -1,0 +1,46 @@
+@model LabelEditorPanelModel
+<div class="board-card-menu-surface">
+    <div class="board-card-menu-header">
+        <button type="button" class="board-card-menu-back-btn"
+                data-board-id="@Model.BoardId" data-card-id="@Model.CardId"
+                title="Etiketlere dön" aria-label="Etiketlere dön">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6" /></svg>
+        </button>
+        <span class="board-card-menu-title">@(Model.IsNew ? "Yeni Etiket" : "Etiketi Düzenle")</span>
+        <button type="button" class="board-card-menu-close-btn" title="Kapat">&times;</button>
+    </div>
+
+    @if (!Model.IsNew)
+    {
+        <div class="board-label-preview-row">
+            <span class="board-label-strip board-label-strip-lg" style="background:@Model.Color;">@Model.Name</span>
+        </div>
+    }
+
+    <form class="board-label-editor-form" data-label-id="@Model.LabelId" data-board-id="@Model.BoardId" data-card-id="@Model.CardId">
+        <div class="board-label-editor-section">
+            <div class="board-label-editor-heading">Başlık</div>
+            <input type="text" name="name" class="form-control board-label-name-input" value="@Model.Name" maxlength="100" placeholder="Etiket adı" />
+        </div>
+
+        <div class="board-label-editor-section">
+            <div class="board-label-editor-heading">Renk Seç</div>
+            <div class="board-label-color-row">
+                @foreach (var (value, colorLabel) in BoardLabelColors.Palette)
+                {
+                    var selected = string.Equals(value, Model.Color, StringComparison.OrdinalIgnoreCase);
+                    <button type="button" class="board-label-color-swatch@(selected ? " selected" : "")" data-color="@value" style="background:@value;" title="@colorLabel"></button>
+                }
+            </div>
+            <input type="hidden" name="color" class="board-label-color-input" value="@Model.Color" />
+        </div>
+
+        <div class="board-label-editor-actions">
+            <button type="submit" class="btn-chip btn-chip-primary">Kaydet</button>
+            @if (!Model.IsNew)
+            {
+                <button type="button" class="btn-chip btn-chip-danger board-label-delete-btn" data-label-id="@Model.LabelId" data-board-id="@Model.BoardId" data-card-id="@Model.CardId">Sil</button>
+            }
+        </div>
+    </form>
+</div>

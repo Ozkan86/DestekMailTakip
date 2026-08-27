@@ -1,0 +1,22 @@
+@model List<EngineerMessageDrawerItem>
+
+<div class="stats-drawer-panel">
+    @if (!Model.Any())
+    {
+        <div class="stats-drawer-empty">Yeni mesaj yok.</div>
+    }
+    else
+    {
+        foreach (var item in Model)
+        {
+            <a class="stats-drawer-row" asp-controller="Mail" asp-action="Index" asp-route-folder="@item.Folder" asp-route-selected="@item.MailId">
+                <div class="stats-drawer-row-title">@(string.IsNullOrWhiteSpace(item.Subject) ? "(Konu yok)" : item.Subject)</div>
+                <div class="stats-drawer-row-meta">
+                    <span>@item.FromName</span>
+                    <span class="stats-drawer-row-folder">@item.FolderLabel</span>
+                    <span class="stats-drawer-row-time">@item.LastMessageAt.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</span>
+                </div>
+            </a>
+        }
+    }
+</div>

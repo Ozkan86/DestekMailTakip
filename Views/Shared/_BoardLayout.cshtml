@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - Creamobile Destek</title>
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/mail.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/board.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/ui-dialog.css" asp-append-version="true" />
+</head>
+<body>
+    <div class="app-shell">
+        <partial name="_TopBar" />
+
+        <div class="app-body board-app-body">
+            <main role="main" class="app-content board-app-content">
+                @RenderBody()
+            </main>
+        </div>
+    </div>
+
+    <script src="~/lib/jquery/dist/jquery.min.js"></script>
+    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="~/js/ui-dialog.js" asp-append-version="true"></script>
+    <script src="~/js/site.js" asp-append-version="true"></script>
+    <script src="~/js/board-rich-text.js" asp-append-version="true"></script>
+    <script src="~/js/board-card-menu.js" asp-append-version="true"></script>
+    <script src="~/js/board-drag-drop.js" asp-append-version="true"></script>
+    <script src="~/js/board-template-drag-drop.js" asp-append-version="true"></script>
+    <script src="~/js/board-pan-scroll.js" asp-append-version="true"></script>
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

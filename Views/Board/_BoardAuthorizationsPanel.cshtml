@@ -1,0 +1,27 @@
+@model BoardAuthorizationsViewModel
+
+<div class="board-authorized-emails-title">Panoyu Oluşturan Müşteri</div>
+<div class="board-authorized-emails-list">
+    <div class="board-authorization-person-row">
+        <span class="board-authorization-person-name">@Model.OwnerDisplayName</span>
+        <span class="board-authorization-person-email">@(Model.OwnerEmail ?? "—")</span>
+    </div>
+</div>
+
+<div class="board-authorized-emails-title" style="margin-top:10px;">Yetkilendirilen Diğer Müşteriler</div>
+@if (!Model.AuthorizedPeople.Any())
+{
+    <p class="text-muted board-authorized-emails-empty">Başka yetkili müşteri yok.</p>
+}
+else
+{
+    <div class="board-authorized-emails-list">
+        @foreach (var person in Model.AuthorizedPeople)
+        {
+            <div class="board-authorization-person-row">
+                <span class="board-authorization-person-name">@(person.DisplayName ?? "Kayıtlı değil")</span>
+                <span class="board-authorization-person-email">@person.Email</span>
+            </div>
+        }
+    </div>
+}

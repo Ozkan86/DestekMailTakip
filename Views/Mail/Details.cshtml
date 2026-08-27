@@ -1,0 +1,11 @@
+@model MailMessageModel
+@{
+    ViewData["Title"] = Model.Subject;
+    ViewData["IsFrame"] = false;
+}
+
+<div class="container py-4">
+    <a asp-action="Index" class="btn btn-link ps-0">&larr; Gelen kutusuna don</a>
+
+    <partial name="_DetailContent" model="Model" />
+</div>

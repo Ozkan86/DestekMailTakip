@@ -1,0 +1,333 @@
+/* ============================================================================
+   Uygulama geneli onay/uyari penceresi (UiDialog) ve bildirim seridi (toast).
+
+   Tarayicinin kendi window.confirm / window.prompt / window.alert kutulari
+   sayfanin TEPESINDEN iner ve "localhost:5144 web sitesinin mesaji:" gibi
+   teknik bir baslik gosterir; bicimlendirilemez, iframe icinden acildiginda
+   da ust pencereyi degil sadece cerceveyi kilitler. Bu dosya, projenin geri
+   kalaniyla ayni gorsel dili (beyaz kart, 14px radius, --brand-blue) konusan
+   yerlestirilmis bir alternatif sunar.
+
+   z-index notu: mevcut en yuksek katman .board-card-detail-backdrop (=60/70)
+   oldugu icin dialog 3000, toast 3100 kullanir; boylece acik bir kart
+   penceresinin ustunde de gorunur.
+   ========================================================================== */
+
+.ui-dialog-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 3000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    background: rgba(15, 23, 42, 0.45);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    opacity: 0;
+    transition: opacity 0.16s ease;
+}
+
+.ui-dialog-backdrop.ui-dialog-open {
+    opacity: 1;
+}
+
+.ui-dialog {
+    width: min(440px, 100%);
+    max-height: calc(100vh - 48px);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    background: #fff;
+    border-radius: 14px;
+    box-shadow: 0 30px 80px rgba(15, 23, 42, 0.35);
+    transform: translateY(8px) scale(0.98);
+    opacity: 0;
+    transition: transform 0.16s ease, opacity 0.16s ease;
+}
+
+.ui-dialog-backdrop.ui-dialog-open .ui-dialog {
+    transform: none;
+    opacity: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .ui-dialog-backdrop,
+    .ui-dialog {
+        transition: none;
+    }
+}
+
+.ui-dialog-head {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 20px 20px 0 20px;
+}
+
+/* Tonu tasiyan yuvarlak ikon rozeti: kullanici basligi okumadan once bile
+   islemin yikici mi (kirmizi) yoksa sıradan mi (mavi) oldugunu gorur. */
+.ui-dialog-icon {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 38px;
+    height: 38px;
+    border-radius: 999px;
+}
+
+.ui-dialog-icon svg {
+    width: 20px;
+    height: 20px;
+}
+
+.ui-dialog-tone-danger .ui-dialog-icon {
+    background: #fdeaea;
+    color: #c0392b;
+}
+
+.ui-dialog-tone-warning .ui-dialog-icon {
+    background: #fdf3e2;
+    color: #b7791f;
+}
+
+.ui-dialog-tone-primary .ui-dialog-icon {
+    background: #e7eef6;
+    color: var(--brand-blue, #235585);
+}
+
+.ui-dialog-head-text {
+    min-width: 0;
+    padding-top: 2px;
+}
+
+.ui-dialog-title {
+    margin: 0;
+    font-size: 15.5px;
+    font-weight: 700;
+    color: #1a2333;
+    line-height: 1.35;
+}
+
+.ui-dialog-message {
+    margin: 6px 0 0 0;
+    font-size: 13.5px;
+    line-height: 1.55;
+    color: #5b6472;
+    word-break: break-word;
+}
+
+.ui-dialog-body {
+    padding: 14px 20px 0 70px;
+    overflow-y: auto;
+}
+
+.ui-dialog-label {
+    display: block;
+    margin-bottom: 6px;
+    font-size: 12.5px;
+    font-weight: 600;
+    color: #1a2333;
+}
+
+.ui-dialog-input {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 9px 12px;
+    border: 1.5px solid #e4e7ec;
+    border-radius: 8px;
+    font-size: 13.5px;
+    font-family: inherit;
+    color: #1a2333;
+    resize: vertical;
+}
+
+.ui-dialog-input:focus {
+    outline: none;
+    border-color: var(--brand-blue, #235585);
+}
+
+.ui-dialog-input.ui-dialog-input-invalid {
+    border-color: #c0392b;
+}
+
+.ui-dialog-error {
+    margin: 6px 0 0 0;
+    min-height: 16px;
+    font-size: 12px;
+    color: #c0392b;
+}
+
+.ui-dialog-foot {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    padding: 18px 20px 20px 20px;
+}
+
+.ui-dialog-btn {
+    padding: 8px 16px;
+    border: 1px solid transparent;
+    border-radius: 8px;
+    font-size: 13.5px;
+    font-weight: 600;
+    font-family: inherit;
+    cursor: pointer;
+    transition: background 0.12s ease, border-color 0.12s ease;
+}
+
+.ui-dialog-btn:focus-visible {
+    outline: 2px solid var(--brand-blue, #235585);
+    outline-offset: 2px;
+}
+
+.ui-dialog-btn-cancel {
+    background: #fff;
+    border-color: #e4e7ec;
+    color: #5b6472;
+}
+
+.ui-dialog-btn-cancel:hover {
+    background: #f7f8fb;
+}
+
+.ui-dialog-btn-confirm {
+    background: var(--brand-blue, #235585);
+    color: #fff;
+}
+
+.ui-dialog-btn-confirm:hover {
+    background: var(--brand-blue-dark, #1c446a);
+}
+
+.ui-dialog-tone-danger .ui-dialog-btn-confirm {
+    background: #c0392b;
+}
+
+.ui-dialog-tone-danger .ui-dialog-btn-confirm:hover {
+    background: #a53125;
+}
+
+.ui-dialog-tone-warning .ui-dialog-btn-confirm {
+    background: #b7791f;
+}
+
+.ui-dialog-tone-warning .ui-dialog-btn-confirm:hover {
+    background: #9c6619;
+}
+
+/* Dialog acikken arka planin kaymasini engeller. */
+body.ui-dialog-lock {
+    overflow: hidden;
+}
+
+/* ---- Toast: bloklamayan, kendiliginden kapanan bildirim ---- */
+
+.ui-toast-stack {
+    position: fixed;
+    right: 20px;
+    bottom: 20px;
+    z-index: 3100;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    align-items: flex-end;
+    pointer-events: none;
+}
+
+.ui-toast {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    max-width: min(380px, calc(100vw - 40px));
+    padding: 11px 14px;
+    border-radius: 10px;
+    border-left: 4px solid #5b6472;
+    background: #fff;
+    box-shadow: 0 12px 32px rgba(15, 23, 42, 0.22);
+    font-size: 13px;
+    line-height: 1.5;
+    color: #1a2333;
+    pointer-events: auto;
+    opacity: 0;
+    transform: translateY(8px);
+    transition: opacity 0.16s ease, transform 0.16s ease;
+    word-break: break-word;
+}
+
+.ui-toast.ui-toast-visible {
+    opacity: 1;
+    transform: none;
+}
+
+.ui-toast-tone-error {
+    border-left-color: #c0392b;
+}
+
+.ui-toast-tone-warning {
+    border-left-color: #b7791f;
+}
+
+.ui-toast-tone-success {
+    border-left-color: #2f855a;
+}
+
+.ui-toast-tone-info {
+    border-left-color: var(--brand-blue, #235585);
+}
+
+.ui-toast-icon {
+    flex-shrink: 0;
+    margin-top: 1px;
+}
+
+.ui-toast-icon svg {
+    width: 16px;
+    height: 16px;
+}
+
+.ui-toast-tone-error .ui-toast-icon {
+    color: #c0392b;
+}
+
+.ui-toast-tone-warning .ui-toast-icon {
+    color: #b7791f;
+}
+
+.ui-toast-tone-success .ui-toast-icon {
+    color: #2f855a;
+}
+
+.ui-toast-tone-info .ui-toast-icon {
+    color: var(--brand-blue, #235585);
+}
+
+.ui-toast-close {
+    flex-shrink: 0;
+    margin-left: 2px;
+    padding: 0 2px;
+    border: 0;
+    background: none;
+    color: #9aa0ab;
+    font-size: 16px;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.ui-toast-close:hover {
+    color: #1a2333;
+}
+
+@media (max-width: 520px) {
+    .ui-toast-stack {
+        right: 12px;
+        left: 12px;
+        bottom: 12px;
+        align-items: stretch;
+    }
+
+    .ui-toast {
+        max-width: none;
+    }
+}

@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 260">
+  <rect width="480" height="260" fill="#EBF0F6"/>
+
+  <!-- 5 ince kolon: uctan uca proje yonetimi akisi -->
+  <g fill="#dbe6f0" stroke="#c3d3e2">
+    <rect x="20" y="30" width="80" height="200" rx="10"/>
+    <rect x="108" y="30" width="80" height="200" rx="10"/>
+    <rect x="196" y="30" width="80" height="200" rx="10"/>
+    <rect x="284" y="30" width="80" height="200" rx="10"/>
+    <rect x="372" y="30" width="80" height="200" rx="10"/>
+  </g>
+  <g fill="#ffffff" stroke="#c3d3e2">
+    <rect x="28" y="44" width="64" height="26" rx="6"/>
+    <rect x="28" y="78" width="64" height="26" rx="6"/>
+    <rect x="116" y="44" width="64" height="26" rx="6"/>
+    <rect x="204" y="44" width="64" height="26" rx="6"/>
+    <rect x="292" y="44" width="64" height="26" rx="6"/>
+  </g>
+  <rect x="380" y="44" width="64" height="26" rx="6" fill="#c9c0e0" stroke="#a89bd0"/>
+
+  <!-- Rozet: clipboard-check (resmi onay/dokumantasyon adimlari) -->
+  <circle cx="440" cy="34" r="26" fill="#ffffff" stroke="#235585" stroke-width="2.5"/>
+  <path d="M432 26 h16 M430 24 h20 v4 h-20 z" fill="none" stroke="#235585" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M429 22 h22 a3 3 0 0 1 3 3 v20 a3 3 0 0 1 -3 3 h-22 a3 3 0 0 1 -3 -3 v-20 a3 3 0 0 1 3 -3 z" fill="none" stroke="#235585" stroke-width="2"/>
+  <path d="M433 34 l3.5 3.5 l7 -7" fill="none" stroke="#235585" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

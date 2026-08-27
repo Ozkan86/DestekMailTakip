@@ -1,0 +1,189 @@
+@model Board
+@{
+    var template = Model.Template;
+    var isEngineer = ViewData["IsEngineer"] as bool? ?? false;
+    var isCustomer = User.IsInRole("Customer");
+    var isAdmin = ViewData["IsAdmin"] as bool? ?? false;
+    var currentUserId = ViewData["CurrentUserId"] as string ?? string.Empty;
+    var viewedRound = ViewData["ViewedRound"] as int? ?? Model.CurrentSprintRound;
+    var isReadOnly = ViewData["IsReadOnlyRound"] as bool? ?? false;
+    var actorRole = isEngineer ? BoardAddCardRole.Engineer : (isCustomer ? BoardAddCardRole.Customer : BoardAddCardRole.None);
+
+    var allowedTransitions = template.Transitions
+        .Where(t => t.AllowedRole == actorRole)
+        .Select(t => new { from = t.FromListKey, to = t.ToListKey, requiresNote = t.RequiresNote })
+        .ToList();
+    var transitionsJson = System.Text.Json.JsonSerializer.Serialize(allowedTransitions);
+}
+
+<div class="board-columns board-columns--scrollable" data-template="@template.Key" data-transitions='@Html.Raw(transitionsJson)'>
+    @foreach (var list in template.Lists)
+    {
+        var cards = Model.Cards
+            .Where(c => c.ListKey == list.Key && (!template.HasSprintRounds || c.SprintRound == viewedRound))
+            .ToList();
+
+        var canAddHere = !isReadOnly && list.AddCardRole == actorRole && list.AddCardRole != BoardAddCardRole.None
+            && (!template.HasSprintRounds || viewedRound == Model.CurrentSprintRound);
+
+        var columnColor = Model.GetGenericListColor(list.Key);
+
+        <div class="board-column" data-list-key="@list.Key" style="@(columnColor is not null ? $"background:{columnColor};" : "")">
+            <div class="board-column-header">
+                <svg class="board-column-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">@Html.Raw(list.IconSvg)</svg>
+                <h3 class="board-column-title">@list.Label</h3>
+                <span class="board-column-count">@cards.Count</span>
+
+                <button type="button" class="board-column-collapse-btn" title="Daralt/Genişlet">
+                    <svg class="board-collapse-icon-expanded" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 8 12 3 18" /><polyline points="21 6 16 12 21 18" /></svg>
+                    <svg class="board-collapse-icon-collapsed" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><polyline points="8 6 3 12 8 18" /><polyline points="16 6 21 12 16 18" /></svg>
+                </button>
+
+                <details class="board-column-menu">
+                    <summary class="board-column-menu-trigger" title="Diğer seçenekler">&#8942;</summary>
+                    <div class="board-column-menu-panel">
+                        <div class="board-column-menu-title">Arkaplan rengi</div>
+                        <div class="board-column-color-row">
+                            @foreach (var (colorValue, colorLabel) in BoardLists.ColorPalette)
+                            {
+                                var isSelected = string.Equals(colorValue, columnColor, StringComparison.OrdinalIgnoreCase);
+                                <form asp-action="SetListColor" asp-route-boardId="@Model.Id" method="post" class="board-column-color-form">
+                                    <input type="hidden" name="listKey" value="@list.Key" />
+                                    <input type="hidden" name="color" value="@colorValue" />
+                                    <button type="submit"
+                                            class="board-column-color-swatch@(isSelected ? " selected" : "")@(colorValue is null ? " board-column-color-swatch-none" : "")"
+                                            style="@(colorValue is not null ? $"background:{colorValue};" : "")"
+                                            title="@colorLabel"></button>
+                                </form>
+                            }
+                        </div>
+                    </div>
+                </details>
+            </div>
+
+            <div class="board-column-body">
+                @if (!cards.Any())
+                {
+                    <p class="board-empty-note">Bu kolonda madde yok.</p>
+                }
+                else
+                {
+                    @foreach (var card in cards.OrderBy(c => c.SortOrder))
+                    {
+                        <partial name="_GenericBoardCardItem" model="(card, Model.Id, template, isEngineer, isCustomer, isReadOnly, isAdmin, currentUserId)" />
+                    }
+                }
+
+                @if (canAddHere)
+                {
+                    <button type="button" class="board-add-card-btn">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
+                        <span>Kart Ekle</span>
+                    </button>
+                    <form asp-action="AddCard" asp-route-boardId="@Model.Id" method="post" class="board-add-card-form" style="display:none;">
+                        <input type="hidden" name="listKey" value="@list.Key" />
+                        <input type="text" name="Title" class="form-control" placeholder="Başlık" required maxlength="300" />
+                        <textarea name="Description" class="form-control" placeholder="Açıklama (opsiyonel)"></textarea>
+                        <div class="board-add-card-form-actions">
+                            <button type="submit" class="btn-chip btn-chip-primary">Ekle</button>
+                            <button type="button" class="board-add-card-close-btn" title="Kapat">&times;</button>
+                        </div>
+                    </form>
+                }
+            </div>
+        </div>
+    }
+
+    @if (template.HasSprintRounds && viewedRound > 1)
+    {
+        var previousRound = viewedRound - 1;
+        var sprintDoneList = template.GetList("sprint-done");
+        var previousCards = Model.Cards
+            .Where(c => c.ListKey == "sprint-done" && c.SprintRound == previousRound)
+            .OrderBy(c => c.SortOrder)
+            .ToList();
+
+        <div class="board-column" data-list-key="sprint-done-previous">
+            <div class="board-column-header">
+                <svg class="board-column-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">@Html.Raw(sprintDoneList?.IconSvg)</svg>
+                <h3 class="board-column-title">Sprint Done (Önceki Tur)</h3>
+                <span class="board-column-count">@previousCards.Count</span>
+
+                <button type="button" class="board-column-collapse-btn" title="Daralt/Genişlet">
+                    <svg class="board-collapse-icon-expanded" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 8 12 3 18" /><polyline points="21 6 16 12 21 18" /></svg>
+                    <svg class="board-collapse-icon-collapsed" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><polyline points="8 6 3 12 8 18" /><polyline points="16 6 21 12 16 18" /></svg>
+                </button>
+            </div>
+
+            <div class="board-column-body">
+                @if (!previousCards.Any())
+                {
+                    <p class="board-empty-note">Bu kolonda madde yok.</p>
+                }
+                else
+                {
+                    @foreach (var card in previousCards)
+                    {
+                        <partial name="_GenericBoardCardItem" model="(card, Model.Id, template, isEngineer, isCustomer, true, isAdmin, currentUserId)" />
+                    }
+                }
+            </div>
+        </div>
+    }
+</div>
+
+@if (template.HasSprintRounds)
+{
+    <div class="board-sprint-dots">
+        @for (var round = 1; round <= Model.CurrentSprintRound; round++)
+        {
+            <a class="board-sprint-dot@(round == viewedRound ? " active" : "")"
+               asp-action="Details" asp-route-id="@Model.Id" asp-route-round="@round"
+               title="Tur @round@(round == Model.CurrentSprintRound ? " (aktif)" : "")"></a>
+        }
+    </div>
+}
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        document.querySelectorAll('.board-columns--scrollable .board-column-collapse-btn').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                btn.closest('.board-column').classList.toggle('collapsed');
+            });
+        });
+
+        var genericMenus = document.querySelectorAll('.board-columns--scrollable .board-column-menu');
+        genericMenus.forEach(function (menu) {
+            menu.addEventListener('toggle', function () {
+                if (menu.open) {
+                    genericMenus.forEach(function (other) {
+                        if (other !== menu) {
+                            other.open = false;
+                        }
+                    });
+                }
+            });
+        });
+
+        document.querySelectorAll('.board-columns--scrollable .board-add-card-btn').forEach(function (btn) {
+            var form = btn.nextElementSibling;
+            btn.addEventListener('click', function () {
+                btn.style.display = 'none';
+                form.style.display = '';
+                var titleInput = form.querySelector('input[name="Title"]');
+                if (titleInput) {
+                    titleInput.focus();
+                }
+            });
+
+            var closeBtn = form.querySelector('.board-add-card-close-btn');
+            if (closeBtn) {
+                closeBtn.addEventListener('click', function () {
+                    form.style.display = 'none';
+                    form.reset();
+                    btn.style.display = '';
+                });
+            }
+        });
+    });
+</script>

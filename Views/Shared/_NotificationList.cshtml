@@ -1,0 +1,31 @@
+@model List<EmployeeMessage>
+@{
+    var currentUserId = ViewData["CurrentUserId"] as string;
+}
+
+@if (!Model.Any())
+{
+    <div class="notification-empty">Henüz mesajınız yok.</div>
+}
+else
+{
+    foreach (var message in Model)
+    {
+        var canReply = !string.IsNullOrEmpty(message.SenderUserId) && message.SenderUserId != currentUserId;
+        <div class="notification-item @(message.IsRead ? "" : "unread")">
+            <div class="notification-item-header">
+                <span>@message.SenderDisplayName @(message.IsBroadcast ? "(Tüm çalışanlara)" : "")</span>
+                <span>@message.CreatedAt.ToLocalTime().ToString("dd.MM HH:mm")</span>
+            </div>
+            <div>@message.Body</div>
+            @if (canReply)
+            {
+                <button type="button" class="notification-reply-trigger" data-message-id="@message.Id">Yanıtla</button>
+                <form class="notification-reply-form" data-message-id="@message.Id" style="display:none;">
+                    <textarea name="body" rows="2" placeholder="Cevabınızı yazın..." required></textarea>
+                    <button type="submit">Gönder</button>
+                </form>
+            }
+        </div>
+    }
+}

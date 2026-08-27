@@ -1,0 +1,2763 @@
+:root {
+    --brand-blue: #235585;
+    --brand-blue-dark: #1c446a;
+    --topbar-bg: #235585;
+    --topbar-text: #ffffff;
+    --topbar-text-secondary: #d6e4f5;
+    --topbar-accent: #f5a623;
+    --topbar-icon-hover: #85b7eb;
+    --sidebar-bg: #ebf0f6;
+    --sidebar-border: #d8dee8;
+    --sidebar-brand-text: #1f2937;
+    --sidebar-text-muted: #8a93a6;
+    --sidebar-text: #4b5563;
+    --sidebar-text-active: #235585;
+    --sidebar-icon: #6b7280;
+    --app-bg: #f4f5f7;
+    --panel-border: #e5e7eb;
+    --neutral-chip-bg: #eef0f4;
+    --neutral-chip-text: #6b7280;
+}
+
+html, body {
+    margin: 0;
+}
+
+/* Sayfa govdesi (.app-shell'i saran ust duzey sayfa) hicbir zaman kendisi
+   kaymaz; kaydirma her zaman .app-content (ve onun icindeki .mail-list-pane
+   / mail onizleme iframe'i gibi) sinirli-yukseklikli ic panellerde olur. Bu
+   olmadan uzun bir liste (ör. 19+ mail) tum sayfayi asagi kaydiriyor, bu da
+   solda sabit durmasi gereken klasor menusunun ve sagdaki mail onizleme
+   panelinin gorunum disina cikmasina yol aciyordu. ":has(.app-shell)" ile
+   siniri kasten dar tutuyoruz: bu dosya (mail.css) mail onizleme iframe'inin
+   kendi sayfasinda (_FrameLayout.cshtml) da yukleniyor ve o sayfanin
+   ".app-shell"i yok - dolayisiyla bu kural (height:100% sabitlemesi dahil)
+   ona bulasip iframe icindeki uzun bir mail govdesinin kendi (dogal,
+   tarayicinin sagladigi) kaydirmasini engellemez.
+*/
+html:has(.app-shell), body:has(.app-shell) {
+    height: 100%;
+    overflow: hidden;
+}
+
+body {
+    font-family: "Segoe UI", "Inter", system-ui, -apple-system, sans-serif;
+    background: var(--app-bg);
+}
+
+/* =========================================================
+   App shell: tum genisligi kesen ust bar + altinda sola
+   tamamen yapisik sidebar + icerik
+   ========================================================= */
+.app-shell {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    width: 100%;
+}
+
+.app-body {
+    display: flex;
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: hidden;
+}
+
+.app-sidebar {
+    flex: 0 0 232px;
+    width: 232px;
+    background: var(--sidebar-bg);
+    border-right: 1px solid var(--sidebar-border);
+    padding: 18px 12px;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    overflow: hidden;
+}
+
+.app-sidebar-brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 4px 10px 20px;
+}
+
+.app-sidebar-brand img {
+    height: 20px;
+    width: 20px;
+}
+
+.app-sidebar-brand span {
+    color: var(--sidebar-brand-text);
+    font-weight: 500;
+    font-size: 15.5px;
+    letter-spacing: 0.2px;
+}
+
+.app-sidebar-section-label {
+    color: #9aa0ab;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 4px 12px 8px;
+}
+
+.app-sidebar-nav {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+/* "Klasörlerim" (kullanicinin kendi olusturdugu klasorler) listesi: marka/
+   sistem klasorleri/"+Klasor ekle" alani her zaman sabit kalsin, sadece bu
+   liste -cok sayida klasor eklenirse- kendi icinde kaysin diye kalan
+   dikey alanin tamamini alir ve tasarsa scroll eder. */
+.app-sidebar-nav-custom-folders {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    padding-right: 2px;
+}
+
+.app-sidebar-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 9px 12px;
+    border-radius: 8px;
+    text-decoration: none;
+    color: var(--sidebar-text);
+    font-size: 13.5px;
+    font-weight: 400;
+    transition: background 0.12s ease, color 0.12s ease;
+}
+
+.app-sidebar-item:hover {
+    background: #dce5f0;
+    color: var(--sidebar-brand-text);
+}
+
+.app-sidebar-item.active {
+    background: rgba(35, 85, 133, 0.1);
+    color: var(--sidebar-text-active);
+    font-weight: 500;
+}
+
+.app-sidebar-item .app-sidebar-item-label {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.app-sidebar-icon {
+    width: 16px;
+    height: 16px;
+    flex-shrink: 0;
+    color: var(--sidebar-icon);
+    transition: color 0.12s ease;
+}
+
+.app-sidebar-item:hover .app-sidebar-icon {
+    color: var(--sidebar-brand-text);
+}
+
+.app-sidebar-item.active .app-sidebar-icon {
+    color: var(--sidebar-text-active);
+}
+
+.app-sidebar-count {
+    font-size: 11.5px;
+    font-weight: 600;
+    background: var(--neutral-chip-bg);
+    color: var(--neutral-chip-text);
+    padding: 1px 8px;
+    border-radius: 10px;
+    flex-shrink: 0;
+}
+
+.app-sidebar-item.active .app-sidebar-count {
+    background: rgba(35, 85, 133, 0.18);
+    color: var(--sidebar-text-active);
+}
+
+.app-sidebar-section-label {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.app-sidebar-add-btn {
+    width: 18px;
+    height: 18px;
+    line-height: 16px;
+    border-radius: 5px;
+    border: none;
+    background: var(--neutral-chip-bg);
+    color: var(--sidebar-text);
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    text-transform: none;
+    letter-spacing: normal;
+}
+
+.app-sidebar-add-btn:hover {
+    background: var(--brand-blue);
+    color: #fff;
+}
+
+.app-sidebar-new-folder-form {
+    display: flex;
+    gap: 6px;
+    padding: 0 12px 10px;
+}
+
+.app-sidebar-new-folder-input {
+    flex: 1 1 auto;
+    min-width: 0;
+    border: 1.5px solid var(--sidebar-border);
+    border-radius: 8px;
+    padding: 5px 8px;
+    font-size: 12.5px;
+}
+
+.app-sidebar-empty-note {
+    color: var(--sidebar-text-muted);
+    font-size: 12px;
+    padding: 4px 12px;
+}
+
+.app-sidebar-item-wrap {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+}
+
+.app-sidebar-item-wrap .app-sidebar-item {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.app-sidebar-delete-folder-form {
+    flex-shrink: 0;
+}
+
+/* ---- Mail detayi: birlesik arac kutusu (cizim + atama/bayrak/etiket/diger) ---- */
+.detail-toolbar {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    padding: 4px;
+    background: #f3f7fb;
+    border-radius: 10px;
+}
+
+.detail-toolbar .icon-btn,
+.detail-toolbar .detail-dropdown-trigger {
+    width: 32px;
+    height: 32px;
+    border: none;
+    background: transparent;
+}
+
+.detail-toolbar .detail-dropdown-trigger {
+    width: auto;
+    padding: 0 8px;
+}
+
+.detail-toolbar .icon-btn:hover,
+.detail-toolbar .detail-dropdown-trigger:hover {
+    background: rgba(35, 85, 133, 0.1);
+    border: none;
+}
+
+.detail-toolbar .icon-btn-danger:hover {
+    background: rgba(184, 80, 63, 0.12);
+    color: #b8503f;
+    border: none;
+}
+
+.detail-toolbar .annotation-tool.active {
+    background: var(--brand-blue);
+    color: #fff;
+    border-color: var(--brand-blue);
+}
+
+.detail-toolbar-sep {
+    width: 1px;
+    height: 20px;
+    background: var(--sidebar-border);
+    margin: 0 4px;
+}
+
+.mail-conversation-wrap {
+    position: relative;
+}
+
+/* Yanit kutusu + taslak notu: konusma akisi artik tam genislikte (kenarliklari
+   mail listesine bitisik) oldugu icin kendi yatay bosluguna ihtiyaci var. */
+.mail-detail-compose-area {
+    padding: 16px 20px;
+}
+
+.mail-annotation-canvas {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    touch-action: none;
+    cursor: crosshair;
+}
+
+.annotation-options-panel {
+    display: none;
+    position: fixed;
+    z-index: 30;
+    background: #fff;
+    border: 1px solid #eceef2;
+    border-radius: 10px;
+    box-shadow: 0 8px 24px rgba(20, 24, 33, 0.14);
+    padding: 12px;
+    width: 220px;
+}
+
+.annotation-options-panel.open {
+    display: block;
+}
+
+.annotation-options-title {
+    font-size: 12px;
+    font-weight: 600;
+    color: #475467;
+    margin-bottom: 8px;
+}
+
+.annotation-color-row {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-bottom: 4px;
+}
+
+.annotation-color-swatch {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    border: 2px solid transparent;
+    cursor: pointer;
+    padding: 0;
+}
+
+.annotation-color-swatch.selected {
+    border-color: #344054;
+    box-shadow: 0 0 0 2px #fff inset;
+}
+
+.annotation-thickness-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 10px;
+    font-size: 12px;
+    color: #475467;
+}
+
+.annotation-thickness-row input[type="range"] {
+    flex: 1 1 auto;
+}
+
+.annotation-thickness-value {
+    min-width: 34px;
+    text-align: right;
+}
+
+/* ---- Ust bar: tum genisligi (sidebar + icerik) keser ---- */
+.app-topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 20px;
+    height: 52px;
+    background: var(--topbar-bg);
+    flex-shrink: 0;
+}
+
+.app-topbar-left {
+    flex: 1 1 auto;
+    display: flex;
+    align-items: center;
+}
+
+.app-topbar-nav-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--topbar-text);
+    text-decoration: none;
+    font-size: 13.5px;
+    font-weight: 500;
+    padding: 6px 10px;
+    border-radius: 8px;
+}
+
+.app-topbar-nav-link svg {
+    width: 16px;
+    height: 16px;
+}
+
+.app-topbar-nav-link:hover {
+    background: rgba(255, 255, 255, 0.12);
+    color: var(--topbar-icon-hover);
+}
+
+/* Navbar'daki manuel senkronizasyon butonu: gorunum olarak yanindaki
+   "Panolar" baglantisiyla ayni (app-topbar-nav-link), ama <button> oldugu
+   icin tarayici varsayilanlari sifirlanir. */
+.app-topbar-sync-btn {
+    border: none;
+    background: transparent;
+    font-family: inherit;
+    cursor: pointer;
+    margin-left: 4px;
+}
+
+.app-topbar-sync-btn:hover:not(:disabled) {
+    background: rgba(255, 255, 255, 0.12);
+    color: var(--topbar-icon-hover);
+}
+
+.app-topbar-sync-btn:disabled {
+    cursor: default;
+    opacity: 0.7;
+}
+
+.app-topbar-sync-btn.is-syncing svg {
+    animation: app-topbar-sync-spin 0.9s linear infinite;
+}
+
+@keyframes app-topbar-sync-spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.app-topbar-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+}
+
+.topbar-search {
+    display: flex;
+    align-items: center;
+    position: relative;
+}
+
+.topbar-search-input {
+    width: 0;
+    opacity: 0;
+    padding: 0;
+    margin-right: 0;
+    border: none;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.15);
+    color: var(--topbar-text);
+    font-weight: 400;
+    font-size: 13px;
+    height: 34px;
+    transition: width 0.16s ease, opacity 0.16s ease, padding 0.16s ease, margin 0.16s ease;
+}
+
+.topbar-search-input::placeholder {
+    color: var(--topbar-text-secondary);
+}
+
+.topbar-search-input:focus {
+    outline: none;
+    background: rgba(255, 255, 255, 0.22);
+}
+
+.topbar-search.open .topbar-search-input {
+    width: 220px;
+    opacity: 1;
+    padding: 0 12px;
+    margin-right: 6px;
+}
+
+.topbar-icon-btn {
+    width: 34px;
+    height: 34px;
+    border-radius: 8px;
+    border: none;
+    background: transparent;
+    color: var(--topbar-text);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    text-decoration: none;
+    transition: background 0.12s ease, color 0.12s ease;
+}
+
+.topbar-icon-btn svg {
+    width: 18px;
+    height: 18px;
+}
+
+.topbar-icon-btn:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: var(--topbar-icon-hover);
+}
+
+#notificationBellTrigger {
+    color: var(--topbar-accent);
+}
+
+#notificationBellTrigger:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: var(--topbar-accent);
+    opacity: 0.85;
+}
+
+.topbar-profile {
+    position: relative;
+}
+
+.topbar-profile-menu {
+    display: none;
+    position: absolute;
+    right: 0;
+    top: calc(100% + 10px);
+    min-width: 220px;
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 12px 28px rgba(16, 24, 40, 0.18), 0 2px 6px rgba(16, 24, 40, 0.08);
+    padding: 6px;
+    z-index: 60;
+}
+
+.topbar-profile-menu.open {
+    display: block;
+}
+
+.topbar-profile-menu-header {
+    padding: 10px 12px 8px;
+    border-bottom: 1px solid #f0f1f4;
+    margin-bottom: 6px;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+}
+
+/* Rozet + ad tek satirda; alttaki kullanici adi satiri da ayni sol kenardan
+   basladigi icin rozetle hizali durur. */
+.topbar-profile-badge-name-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+}
+
+.topbar-profile-text-col {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.topbar-profile-name-link {
+    text-decoration: none;
+    color: inherit;
+}
+
+.topbar-profile-name-link:hover .topbar-profile-menu-name {
+    color: #2f6fed;
+}
+
+.topbar-engineer-badge {
+    display: inline-flex;
+    flex-shrink: 0;
+    width: 15px;
+    height: 15px;
+    color: #d9ae55;
+}
+
+.topbar-engineer-badge svg {
+    width: 100%;
+    height: 100%;
+}
+
+.topbar-profile-menu-name {
+    font-size: 13.5px;
+    font-weight: 700;
+    color: #131a2c;
+}
+
+.topbar-profile-menu-email {
+    font-size: 12px;
+    color: #9aa0ab;
+    margin-top: 1px;
+}
+
+.topbar-profile-menu-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    border: none;
+    background: transparent;
+    color: #475467;
+    font-size: 13px;
+    font-weight: 500;
+    padding: 8px 10px;
+    border-radius: 8px;
+    cursor: pointer;
+    text-align: left;
+}
+
+.topbar-profile-menu-item svg {
+    width: 15px;
+    height: 15px;
+}
+
+.topbar-profile-menu-item:hover {
+    background: #fdecea;
+    color: #c0392b;
+}
+
+.app-content {
+    flex: 1 1 auto;
+    min-width: 0;
+    min-height: 0;
+    padding: 20px 24px;
+    overflow: auto;
+}
+
+.app-content:has(.mail-app) {
+    padding: 0;
+}
+
+/* =========================================================
+   Mail listesi + onizleme: sag panelin tamamini kaplar,
+   ic ice kutu (kart) gorunumu yok, panelar arasi ince ayirici var.
+   ========================================================= */
+.mail-app {
+    display: flex;
+    gap: 0;
+    height: 100%;
+    min-height: 420px;
+}
+
+.mail-list-pane {
+    flex: 0 0 340px;
+    max-width: 340px;
+    overflow-y: auto;
+    background: #fff;
+    border: none;
+    border-right: 1px solid var(--panel-border);
+    position: relative;
+}
+
+/* "Sadece Benim" filtresi AJAX ile mail-list-pane'i tazelerken (bkz.
+   Index.cshtml) tam sayfa yenileme yerine gosterilen loader. */
+.mail-list-pane.mail-list-pane-loading {
+    overflow: hidden;
+}
+
+.mail-list-pane-spinner {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255, 255, 255, 0.75);
+    z-index: 5;
+}
+
+.mail-list-pane-spinner .spinner {
+    width: 28px;
+    height: 28px;
+    border: 3px solid #e4e7ec;
+    border-top-color: var(--brand-blue, #235585);
+    border-radius: 50%;
+    animation: mail-list-pane-spin 0.7s linear infinite;
+}
+
+@keyframes mail-list-pane-spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.mail-list-header {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--panel-border);
+    position: sticky;
+    top: 0;
+    background: #fff;
+    z-index: 1;
+}
+
+.mail-list-header-slim {
+    background: #f3f7fb;
+    padding: 8px 16px;
+}
+
+.mail-list-filter-toggle {
+    font-size: 11px;
+    padding: 4px 9px;
+    text-decoration: none;
+}
+
+/* Liste basligi birden fazla filtre tasiyabilir: okundu/okunmadi chip'leri soldan
+   saga dizilir, "Sadece Benim" ise eskisi gibi saga yaslanir. */
+.mail-list-header-filters {
+    justify-content: flex-start;
+    gap: 6px;
+}
+
+.mail-list-read-filter {
+    font-size: 11px;
+    padding: 4px 9px;
+}
+
+/* Chip'in kendi renginden turetilir; hem beyaz zeminde hem de secili (dolu mavi)
+   chip uzerinde okunakli kalir. */
+.mail-list-filter-count {
+    opacity: 0.65;
+    font-variant-numeric: tabular-nums;
+}
+
+.mail-list-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 13px 16px;
+    border-bottom: 1px solid #f0f1f4;
+    text-decoration: none;
+    color: inherit;
+}
+
+.mail-list-item:hover {
+    background: #f8f9fb;
+}
+
+.mail-list-item.active {
+    background: rgba(35, 85, 133, 0.08);
+    border-left: 3px solid var(--brand-blue);
+    padding-left: 13px;
+}
+
+.mail-list-item .mail-item-body {
+    flex: 1 1 auto;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+.mail-list-item .mail-item-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 2px;
+}
+
+.mail-list-item .mail-item-sender {
+    font-size: 13.5px;
+    color: #131a2c;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.mail-list-item.unread .mail-item-sender,
+.mail-list-item.unread .mail-item-subject {
+    font-weight: 700;
+}
+
+.mail-list-item .mail-item-date {
+    font-size: 11.5px;
+    color: #9aa0ab;
+    flex-shrink: 0;
+}
+
+.mail-list-item .mail-item-subject-row {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    min-width: 0;
+}
+
+.mail-list-item .mail-item-subject {
+    font-size: 13px;
+    color: #667085;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.mail-item-snippet {
+    font-size: 12px;
+    color: #9aa0ab;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-top: 2px;
+}
+
+.mail-flag-icon {
+    color: #b8503f;
+    flex-shrink: 0;
+}
+
+.mail-attachment-icon {
+    color: #9aa0ab;
+    flex-shrink: 0;
+}
+
+.mail-item-meta {
+    display: flex;
+    gap: 8px;
+    margin-top: 3px;
+}
+
+.mail-item-assigned {
+    font-size: 11px;
+    color: var(--brand-blue);
+}
+
+.mail-item-draft-tag {
+    font-size: 11px;
+    color: #d97706;
+    font-weight: 600;
+}
+
+.mail-list-item-wrap {
+    position: relative;
+}
+
+.mail-item-draft-delete {
+    display: none;
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    width: 26px;
+    height: 26px;
+    align-items: center;
+    justify-content: center;
+    border: 1.5px solid #e4e7ec;
+    border-radius: 7px;
+    background: #fff;
+    color: #98a2b3;
+    cursor: pointer;
+}
+
+.mail-item-draft-delete svg {
+    width: 14px;
+    height: 14px;
+}
+
+.mail-item-draft-delete:hover {
+    color: #dc3545;
+    border-color: #fbd5d8;
+    background: #fef2f3;
+}
+
+.mail-list-item-wrap:hover .mail-item-draft-delete {
+    display: flex;
+}
+
+/* ---- Avatar daireleri ---- */
+.avatar-circle {
+    flex-shrink: 0;
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12.5px;
+    font-weight: 700;
+    color: #fff;
+}
+
+.avatar-lg {
+    width: 44px;
+    height: 44px;
+    font-size: 15px;
+}
+
+.avatar-sm {
+    width: 28px;
+    height: 28px;
+    font-size: 11px;
+}
+
+/* Rozet rengi sabit sinif yerine kullaniciya atanmis tekil renk indeksinden
+   uretilip satir ici stil olarak basilir (bkz. AvatarPalette /
+   IUserAvatarColorService). Renk verilmezse notr bir zemin kullanilir. */
+.avatar-circle {
+    background: #6b7280;
+}
+
+.mail-preview-pane {
+    flex: 1 1 auto;
+    background: #fff;
+    border: none;
+    overflow: hidden;
+    display: flex;
+}
+
+.mail-preview-pane iframe {
+    width: 100%;
+    height: 100%;
+    border: 0;
+}
+
+.mail-preview-pane {
+    position: relative;
+    transition: opacity 0.2s ease;
+}
+
+.mail-preview-pane-closing {
+    opacity: 0;
+}
+
+/* position:fixed (gercek tarayici viewport'una gore) kullaniliyor: mail
+   onizleme paneli/iframe konusma uzunluguna gore boylanabiliyor (sayfa
+   kayabiliyor), bu yuzden panele gore konumlamak konusma uzunsa butonu
+   ilk acilista gorunur alanin disina itebilirdi. "left" JS ile (bkz.
+   positionPreviewClose) panelin gercek sol kenariyla - dolayisiyla konusma
+   kenarliklarinin (.reply-item) basladigi yerle - hizalanacak sekilde
+   ayarlanir; "top:50%" ise viewport'a gore otomatik ortalar. */
+.mail-preview-close {
+    position: fixed;
+    top: 50%;
+    left: 0;
+    transform: translateY(-50%);
+    z-index: 20;
+    width: 22px;
+    height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1.5px solid var(--panel-border);
+    border-left: none;
+    border-radius: 0 8px 8px 0;
+    background: #fff;
+    color: #667085;
+    line-height: 1;
+    cursor: pointer;
+    box-shadow: 0 1px 4px rgba(16, 24, 40, 0.1);
+}
+
+.mail-preview-close svg {
+    width: 14px;
+    height: 14px;
+}
+
+.mail-preview-close:hover {
+    color: var(--sidebar-text-active);
+    border-color: rgba(35, 85, 133, 0.35);
+    background: rgba(35, 85, 133, 0.06);
+}
+
+.mail-preview-empty {
+    margin: auto;
+    color: #9aa0ab;
+    text-align: center;
+    padding: 24px;
+}
+
+/* ---- Atanmis klasoru: bastaki tam genislik durumu (mail secilene kadar) ---- */
+.mail-app-assigned-initial .mail-list-pane {
+    flex: 1 1 auto;
+    max-width: none;
+    border-right: none;
+}
+
+.mail-app-assigned-initial .mail-preview-pane {
+    display: none;
+}
+
+/* ---- Atanmis klasoru: kullanici bazli gruplu/acilir-kapanir liste ---- */
+.assigned-user-group {
+    border-bottom: 1px solid var(--panel-border);
+}
+
+.assigned-user-group:last-child {
+    border-bottom: none;
+}
+
+.assigned-user-group-header {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    gap: 10px;
+    padding: 12px 16px;
+    cursor: pointer;
+    background: #f3f7fb;
+    border: none;
+    text-align: left;
+}
+
+.assigned-user-group-header:hover {
+    background: #eaf1f8;
+}
+
+.assigned-user-group-name {
+    flex: 1 1 auto;
+    font-size: 13.5px;
+    font-weight: 600;
+    color: #1a2333;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.assigned-user-group-count {
+    font-size: 11.5px;
+    font-weight: 600;
+    color: var(--sidebar-text-active);
+    background: rgba(35, 85, 133, 0.1);
+    padding: 1px 8px;
+    border-radius: 10px;
+}
+
+.assigned-user-group-chevron {
+    width: 16px;
+    height: 16px;
+    color: #9aa0ab;
+    flex-shrink: 0;
+    transition: transform 0.2s ease;
+    transform: rotate(90deg);
+}
+
+.assigned-user-group.is-collapsed .assigned-user-group-chevron {
+    transform: rotate(0deg);
+}
+
+.assigned-user-group-body {
+    display: grid;
+    grid-template-rows: 1fr;
+    opacity: 1;
+    transition: grid-template-rows 0.25s ease, opacity 0.2s ease;
+}
+
+.assigned-user-group.is-collapsed .assigned-user-group-body {
+    grid-template-rows: 0fr;
+    opacity: 0;
+}
+
+.assigned-user-group-body-inner {
+    overflow: hidden;
+}
+
+.assigned-task-row {
+    position: relative;
+    padding-left: 16px;
+    align-items: center;
+    flex-wrap: wrap;
+    row-gap: 6px;
+}
+
+.assigned-task-row:hover {
+    background: rgba(35, 85, 133, 0.04);
+}
+
+.task-marker-triangle {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 0;
+    height: 0;
+    border-style: solid;
+    border-width: 13px 13px 0 0;
+    border-right-color: transparent;
+}
+
+.task-tag-chip {
+    font-size: 10.5px;
+    font-weight: 600;
+    padding: 2px 7px;
+    border-radius: 6px;
+    white-space: nowrap;
+}
+
+/* Acik olan mail artik kendi etiketlerini detay sayfasinda (baslik yaninda)
+   gosteriyor; listede tekrar gostermemek icin aktif satirda gizleniyor. */
+.assigned-task-row.active .task-tag-chip {
+    display: none;
+}
+
+/* Secili gosterge (hem kenarlik hem mavimsi tabaka) artik anchor'un degil,
+   checkbox dahil tum satiri saran .task-row-wrap'inki (satir bir butun olarak
+   secili gorunsun; checkbox alani da tabakanin altinda kalsin). */
+.task-row-wrap .mail-list-item.active,
+.task-row-wrap .assigned-task-row.active {
+    background: transparent;
+    border-left: none;
+    padding-left: 16px;
+}
+
+.task-row-wrap.active {
+    background: rgba(35, 85, 133, 0.08);
+    border-left: 3px solid var(--brand-blue);
+}
+
+.assigned-task-sender {
+    flex: 0 0 130px;
+    font-size: 13.5px;
+    font-weight: 600;
+    color: #131a2c;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.assigned-task-title-block {
+    flex: 1 1 220px;
+    min-width: 160px;
+    display: flex;
+    flex-direction: column;
+}
+
+.assigned-task-title-row {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    min-width: 0;
+}
+
+.assigned-task-unread-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--topbar-accent);
+    flex-shrink: 0;
+}
+
+.assigned-task-title {
+    flex: 1 1 auto;
+    font-size: 13.5px;
+    font-weight: 700;
+    color: #131a2c;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    min-width: 0;
+}
+
+.assigned-task-snippet {
+    font-size: 12px;
+    font-weight: 400;
+    color: #9aa0ab;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.assigned-task-right {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.assigned-task-assignees {
+    flex: 0 1 auto;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 4px;
+    max-width: 220px;
+}
+
+.assignee-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 11.5px;
+    font-weight: 600;
+    color: var(--neutral-chip-text);
+    background: var(--neutral-chip-bg);
+    padding: 2px 8px 2px 2px;
+    border-radius: 12px;
+    white-space: nowrap;
+}
+
+.assignee-chip-avatar {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 8px;
+    font-weight: 700;
+    color: #fff;
+    flex-shrink: 0;
+    background: #6b7280; /* renk verilmezse notr zemin; gercek renk satir ici gelir */
+}
+
+.assigned-task-date {
+    flex: 0 0 auto;
+    font-size: 11.5px;
+    color: #9aa0ab;
+    white-space: nowrap;
+}
+
+/* ---- Gorev adi input'lari (atama/oneri formlari icinde) ---- */
+.task-name-input,
+.task-name-suggest-input {
+    font-size: 12.5px;
+    padding: 5px 9px;
+    border: 1px solid var(--panel-border);
+    border-radius: 6px;
+    margin-right: 6px;
+    min-width: 160px;
+}
+
+/* ---- Mail detayi: durum/atama cubugu ---- */
+.status-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    padding: 10px 16px;
+    border-bottom: 1px solid #f0f1f4;
+    background: #fbfbfd;
+}
+
+.status-toolbar-sep {
+    width: 1px;
+    height: 20px;
+    background: #e2e5eb;
+    margin: 0 4px;
+}
+
+.status-badge {
+    font-size: 11.5px;
+    padding: 3px 9px;
+    border-radius: 12px;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.status-badge-closed {
+    background: #e6f4ea;
+    color: #1e7e34;
+}
+
+.status-badge-spam {
+    background: #fdecea;
+    color: #c0392b;
+}
+
+.status-badge-assigned {
+    background: rgba(35, 85, 133, 0.1);
+    color: var(--brand-blue);
+}
+
+.status-badge-unassigned {
+    background: #f1f3f7;
+    color: #6b7280;
+}
+
+.status-badge-pending {
+    background: rgba(245, 166, 35, 0.15);
+    color: #b9790e;
+}
+
+.unassign-pending-note {
+    font-size: 10.5px;
+    font-style: italic;
+    opacity: 0.8;
+    margin-left: 2px;
+}
+
+/* ---- Mail detayi: ust arac cubugu artik sayfanin en ustu (once gonderen
+   basligi vardi, o bolum kaldirildi) ---- */
+.mail-detail-topbar {
+    padding: 8px 16px;
+}
+
+/* ---- Mail detayi: gorev/konu basligi + etiketler + bayrak/tarih satiri ---- */
+.mail-detail-subheader {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 12px 20px;
+    border-bottom: 1px solid #f0f1f4;
+}
+
+.mail-detail-subheader-left {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    min-width: 0;
+}
+
+.mail-detail-title {
+    font-size: 17px;
+    font-weight: 700;
+    color: #131a2c;
+}
+
+.mail-detail-tags {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+}
+
+.mail-detail-tag-form {
+    display: inline-flex;
+}
+
+.mail-detail-tag-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.mail-detail-tag-remove {
+    border: none;
+    background: transparent;
+    color: inherit;
+    opacity: 0.65;
+    font-size: 12px;
+    line-height: 1;
+    padding: 0;
+    cursor: pointer;
+}
+
+.mail-detail-tag-remove:hover {
+    opacity: 1;
+}
+
+.mail-detail-subheader-right {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-shrink: 0;
+}
+
+.mail-detail-date {
+    font-size: 12.5px;
+    color: #9aa0ab;
+    white-space: nowrap;
+}
+
+.status-badge-active {
+    background: rgba(35, 85, 133, 0.1);
+    color: var(--brand-blue);
+}
+
+/* ---- Ikon butonlar ---- */
+.icon-btn {
+    border: 1.5px solid #e4e7ec;
+    background: #fff;
+    color: #667085;
+    width: 36px;
+    height: 36px;
+    border-radius: 9px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: background 0.12s ease, color 0.12s ease, border-color 0.12s ease;
+}
+
+.icon-btn svg {
+    width: 17px;
+    height: 17px;
+}
+
+.icon-btn:hover {
+    background: #f8f9fb;
+    border-color: #d0d5dd;
+    color: #344054;
+}
+
+.icon-btn-flagged {
+    color: #b8503f;
+    border-color: rgba(184, 80, 63, 0.35);
+    background: rgba(184, 80, 63, 0.08);
+}
+
+.icon-btn-flagged:hover {
+    color: #b8503f;
+    background: rgba(184, 80, 63, 0.15);
+}
+
+.icon-btn-danger:hover {
+    color: #dc3545;
+    border-color: #fbd5d8;
+    background: #fef2f3;
+}
+
+/* ---- Chip butonlar (durum/atama aksiyonlari) ---- */
+.btn-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    border: 1.5px solid #e4e7ec;
+    background: #fff;
+    color: #475467;
+    font-size: 12.5px;
+    font-weight: 600;
+    padding: 6px 12px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background 0.12s ease, border-color 0.12s ease;
+}
+
+.btn-chip svg {
+    width: 14px;
+    height: 14px;
+}
+
+.btn-chip:hover {
+    background: #f8f9fb;
+    border-color: #d0d5dd;
+}
+
+.btn-chip:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+}
+
+.btn-chip:disabled:hover {
+    background: #fff;
+    border-color: #e4e7ec;
+}
+
+.btn-chip-primary {
+    background: var(--brand-blue);
+    border-color: var(--brand-blue);
+    color: #fff;
+}
+
+.btn-chip-primary:hover {
+    background: var(--brand-blue-dark);
+    border-color: var(--brand-blue-dark);
+    color: #fff;
+}
+
+/* ---- Icerik bolumleri ---- */
+.section-label {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: #9aa0ab;
+    margin: 22px 0 10px;
+}
+
+/* ---- Konusma akisindaki resim ekleri: kucuk onizleme seridi; tiklaninca
+   ek galerisi o resimden acilir ---- */
+.attachment-strip {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.attachment-strip-item {
+    width: 84px;
+    height: 84px;
+    padding: 0;
+    border: 1px solid #e4e7ec;
+    border-radius: 8px;
+    overflow: hidden;
+    background: #f8f9fa;
+    cursor: pointer;
+    transition: border-color 0.15s ease, transform 0.15s ease;
+}
+
+.attachment-strip-item:hover {
+    border-color: var(--brand-blue);
+    transform: translateY(-1px);
+}
+
+.attachment-strip-item img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+/* Ust bardaki resim ikonunun uzerindeki ek sayisi rozeti. */
+.mail-detail-attachments-trigger {
+    position: relative;
+}
+
+.mail-detail-attachments-badge {
+    position: absolute;
+    top: -3px;
+    right: -3px;
+    min-width: 15px;
+    height: 15px;
+    padding: 0 3px;
+    border-radius: 8px;
+    background: var(--brand-blue);
+    color: #fff;
+    font-size: 9.5px;
+    font-weight: 700;
+    line-height: 15px;
+    text-align: center;
+}
+
+/* ---- Ek galerisi (modal) ---- */
+.attachment-gallery-header {
+    align-items: center;
+}
+
+.attachment-gallery-total {
+    display: inline-block;
+    min-width: 18px;
+    padding: 0 5px;
+    margin-left: 4px;
+    border-radius: 9px;
+    background: #eef2f7;
+    color: #475467;
+    font-size: 11px;
+    font-weight: 700;
+    text-align: center;
+}
+
+.attachment-gallery-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-left: auto;
+}
+
+.attachment-gallery-position {
+    font-size: 12.5px;
+    color: #667085;
+    font-variant-numeric: tabular-nums;
+}
+
+.attachment-gallery-body {
+    padding: 0;
+}
+
+.attachment-gallery-stage {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    /* Koyu zemin: onceki carousel'de acik zemin uzerindeki beyaz oklar
+       gorunmuyordu ve ikinci ekin varligi fark edilmiyordu. */
+    background: #1f2733;
+    min-height: 220px;
+    /* Baslik + dosya adi satiri + kucuk resim seridi ile birlikte modalin
+       ekrana sigmasi icin sahne yuksekligi sinirlaniyor. */
+    max-height: calc(100vh - 320px);
+}
+
+.attachment-gallery-image {
+    max-width: 100%;
+    max-height: calc(100vh - 320px);
+    object-fit: contain;
+    display: block;
+}
+
+.attachment-gallery-nav {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.9);
+    color: #1f2733;
+    cursor: pointer;
+    transition: background 0.15s ease;
+}
+
+.attachment-gallery-nav:hover {
+    background: #fff;
+}
+
+.attachment-gallery-nav svg {
+    width: 22px;
+    height: 22px;
+}
+
+.attachment-gallery-prev {
+    left: 12px;
+}
+
+.attachment-gallery-next {
+    right: 12px;
+}
+
+.attachment-gallery-meta {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 16px;
+    font-size: 12.5px;
+    color: #475467;
+    border-bottom: 1px solid #f0f1f4;
+}
+
+.attachment-gallery-name {
+    font-weight: 600;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.attachment-gallery-owner {
+    color: #98a2b3;
+    margin-left: auto;
+    flex-shrink: 0;
+}
+
+.attachment-gallery-thumbs {
+    display: flex;
+    gap: 8px;
+    padding: 10px 16px;
+    overflow-x: auto;
+}
+
+.attachment-gallery-thumb {
+    width: 56px;
+    height: 56px;
+    flex-shrink: 0;
+    padding: 0;
+    border: 2px solid transparent;
+    border-radius: 6px;
+    overflow: hidden;
+    background: #f8f9fa;
+    cursor: pointer;
+    opacity: 0.65;
+    transition: opacity 0.15s ease, border-color 0.15s ease;
+}
+
+.attachment-gallery-thumb:hover {
+    opacity: 1;
+}
+
+.attachment-gallery-thumb.is-active {
+    opacity: 1;
+    border-color: var(--brand-blue);
+}
+
+.attachment-gallery-thumb img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+.plain-file-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.plain-file-list li {
+    margin-bottom: 4px;
+}
+
+.plain-file-list a {
+    font-size: 13.5px;
+    color: var(--brand-blue);
+    text-decoration: none;
+}
+
+.plain-file-list a:hover {
+    text-decoration: underline;
+}
+
+/* ---- Konusma akisi: HelpScout benzeri, kutu/rounded gorunum yok, her
+   katilimci (musteri/muhendis) kendi (avatariyla ayni) rengindeki kalin
+   sol kenarlikla ayirt ediliyor ---- */
+.reply-item {
+    display: flex;
+    gap: 10px;
+    padding: 14px 20px;
+    border-left: 4px solid transparent;
+    border-bottom: 1px solid #f0f1f4;
+}
+
+/* Konusma satirinin sol kenarlik rengi katilimcinin rozet rengiyle ayni olacak
+   sekilde satir ici stil olarak verilir (bkz. AvatarPalette). */
+
+.reply-item-body {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.reply-item-top {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    margin-bottom: 3px;
+}
+
+.reply-item-top small {
+    margin-left: auto;
+}
+
+.reply-item-top strong {
+    font-size: 13.5px;
+    color: #131a2c;
+}
+
+.reply-item-text {
+    font-size: 13.5px;
+    color: #344054;
+    white-space: pre-wrap;
+    line-height: 1.5;
+}
+
+.draft-note {
+    font-size: 12.5px;
+    color: #b9790e;
+    background: rgba(245, 166, 35, 0.12);
+    border: 1px solid rgba(245, 166, 35, 0.35);
+    padding: 6px 10px;
+    border-radius: 8px;
+    margin-bottom: 10px;
+}
+
+/* ---- Yanit kompoz kutusu ---- */
+.compose-box {
+    border: 1.5px solid var(--panel-border);
+    border-radius: 12px;
+    overflow: hidden;
+    background: #fff;
+}
+
+.compose-textarea {
+    width: 100%;
+    border: none;
+    outline: none;
+    resize: vertical;
+    padding: 12px 14px;
+    font-size: 13.5px;
+    font-family: inherit;
+    color: #344054;
+}
+
+.compose-attachment-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    padding: 0 14px;
+}
+
+.compose-attachment-list:empty {
+    display: none;
+}
+
+.compose-attachment-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    max-width: 260px;
+    font-size: 12px;
+    background: #f1f3f7;
+    color: #475467;
+    padding: 3px 6px 3px 8px;
+    border-radius: 12px;
+}
+
+.compose-attachment-thumb {
+    width: 22px;
+    height: 22px;
+    border-radius: 4px;
+    object-fit: cover;
+    flex-shrink: 0;
+}
+
+.compose-attachment-name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.compose-attachment-size {
+    color: #98a2b3;
+    flex-shrink: 0;
+}
+
+.compose-attachment-remove {
+    border: none;
+    background: transparent;
+    color: #98a2b3;
+    font-size: 15px;
+    line-height: 1;
+    padding: 0 2px;
+    cursor: pointer;
+    flex-shrink: 0;
+}
+
+.compose-attachment-remove:hover {
+    color: #dc3545;
+}
+
+.compose-attachment-summary {
+    align-self: center;
+    font-size: 11.5px;
+    color: #98a2b3;
+}
+
+/* Surukle-birak hedefi: dosyalar yanit kutusunun uzerine birakilabilir. */
+.compose-box.is-drop-target {
+    outline: 2px dashed var(--brand-blue);
+    outline-offset: 2px;
+    background: #f7fafd;
+}
+
+.compose-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 10px 12px;
+    border-top: 1px solid #f0f1f4;
+    background: #fafbfc;
+}
+
+.compose-toolbar-left,
+.compose-toolbar-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.btn-send {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    background: var(--brand-blue);
+    border: none;
+    color: #fff;
+    font-size: 13px;
+    font-weight: 600;
+    padding: 8px 16px;
+    border-radius: 9px;
+    cursor: pointer;
+    transition: background 0.12s ease;
+}
+
+.btn-send svg {
+    width: 14px;
+    height: 14px;
+}
+
+.btn-send:hover {
+    background: var(--brand-blue-dark);
+}
+
+.card {
+    border: none;
+    border-radius: 0;
+    box-shadow: none;
+}
+
+/* ---- Mail detayi: eylem cubugu (birlesik arac kutusu + onceki/sonraki gezinme) ---- */
+.detail-action-bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+    padding: 10px 16px;
+    border-bottom: 1px solid #f0f1f4;
+}
+
+.detail-nav-group {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.detail-nav-disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+    pointer-events: none;
+}
+
+.detail-dropdown {
+    position: relative;
+    display: inline-flex;
+}
+
+.detail-dropdown-trigger {
+    width: auto;
+    padding: 0 10px;
+    gap: 4px;
+}
+
+.detail-dropdown-chevron {
+    width: 12px;
+    height: 12px;
+    flex-shrink: 0;
+    opacity: 0.6;
+}
+
+.detail-dropdown-panel {
+    display: none;
+    position: absolute;
+    top: calc(100% + 8px);
+    left: 0;
+    min-width: 230px;
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 12px 28px rgba(16, 24, 40, 0.18), 0 2px 6px rgba(16, 24, 40, 0.08);
+    padding: 6px;
+    z-index: 60;
+}
+
+.detail-dropdown-panel.open {
+    display: block;
+}
+
+.detail-dropdown-panel-align-right .detail-dropdown-panel {
+    left: auto;
+    right: 0;
+}
+
+.detail-dropdown-panel-wide {
+    min-width: 270px;
+}
+
+.detail-dropdown-section-label {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--neutral-chip-text);
+    padding: 6px 10px 4px;
+}
+
+.detail-assignee-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 5px 10px;
+}
+
+.detail-assignee-name {
+    flex: 1 1 auto;
+    font-size: 13px;
+    color: #344054;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.detail-dropdown-divider {
+    height: 1px;
+    background: var(--panel-border);
+    margin: 4px 2px;
+}
+
+.detail-dropdown-form {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 6px 6px;
+}
+
+.detail-assign-employee-list {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    max-height: 160px;
+    overflow-y: auto;
+    padding: 2px 2px 2px 1px;
+}
+
+.detail-dropdown-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    border: none;
+    background: transparent;
+    color: #475467;
+    font-size: 13px;
+    font-weight: 500;
+    padding: 8px 10px;
+    border-radius: 8px;
+    cursor: pointer;
+    text-align: left;
+    list-style: none;
+}
+
+.detail-dropdown-item-icon {
+    width: 16px;
+    height: 16px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.detail-dropdown-item-icon svg {
+    width: 15px;
+    height: 15px;
+}
+
+.detail-dropdown-item svg {
+    width: 15px;
+    height: 15px;
+    flex-shrink: 0;
+}
+
+.detail-dropdown-item::-webkit-details-marker {
+    display: none;
+}
+
+.detail-dropdown-item:hover {
+    background: rgba(35, 85, 133, 0.06);
+}
+
+.detail-dropdown-item:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.detail-dropdown-item:disabled:hover {
+    background: transparent;
+}
+
+.detail-dropdown-item-action {
+    color: var(--sidebar-text-active);
+    font-weight: 600;
+}
+
+.detail-dropdown-item-current {
+    background: rgba(35, 85, 133, 0.08);
+    color: var(--sidebar-text-active);
+    font-weight: 600;
+}
+
+.detail-dropdown-item-danger {
+    color: #b8503f;
+}
+
+.detail-dropdown-item-danger:hover {
+    background: rgba(184, 80, 63, 0.08);
+}
+
+.detail-dropdown-check {
+    margin-left: auto;
+    width: 14px;
+    height: 14px;
+    flex-shrink: 0;
+}
+
+/* Kurala takildigi icin inaktif birakilan dropdown secenekleri (ornegin atanmamis
+   bir maile "Tamamlandı"): butonun kendisi disabled oldugundan title ipucu
+   guvenilir calismaz; bu yuzden ipucu, butonu saran forma data-lock-tip ile
+   verilir ve burada ::after ile cizilir. */
+.detail-dropdown-item-lock {
+    position: relative;
+}
+
+.detail-dropdown-item-lock::after {
+    content: attr(data-lock-tip);
+    position: absolute;
+    left: 6px;
+    right: 6px;
+    top: calc(100% - 3px);
+    z-index: 70;
+    background: #1f2a37;
+    color: #fff;
+    font-size: 11.5px;
+    font-weight: 500;
+    line-height: 1.4;
+    padding: 7px 9px;
+    border-radius: 8px;
+    box-shadow: 0 8px 20px rgba(16, 24, 40, 0.22);
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.12s ease;
+    pointer-events: none;
+}
+
+.detail-dropdown-item-lock:hover::after {
+    opacity: 1;
+    visibility: visible;
+}
+
+.detail-dropdown-lock-note {
+    font-size: 11.5px;
+    font-style: italic;
+    color: var(--neutral-chip-text);
+    padding: 6px 10px 8px;
+}
+
+.flag-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    display: inline-block;
+}
+
+.flag-dot-active { background: var(--sidebar-text-active); }
+.flag-dot-pending { background: var(--topbar-accent); }
+.flag-dot-closed { background: #1e7e34; }
+.flag-dot-spam { background: #b8503f; }
+
+.detail-tag-tabs {
+    display: flex;
+    gap: 3px;
+    background: #f1f3f7;
+    border-radius: 8px;
+    padding: 3px;
+    margin: 2px;
+}
+
+.detail-tag-tab {
+    flex: 1 1 auto;
+    border: none;
+    background: transparent;
+    color: var(--neutral-chip-text);
+    font-size: 12px;
+    font-weight: 600;
+    padding: 6px 8px;
+    border-radius: 6px;
+    cursor: pointer;
+}
+
+.detail-tag-tab.active {
+    background: #fff;
+    color: var(--sidebar-text-active);
+    box-shadow: 0 1px 2px rgba(16, 24, 40, 0.08);
+}
+
+.detail-tag-panel {
+    padding: 8px 2px 2px;
+}
+
+.detail-marker-swatches {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 4px 6px 6px;
+}
+
+.detail-marker-swatch {
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    border: 2px solid transparent;
+    cursor: pointer;
+    padding: 0;
+}
+
+.detail-marker-swatch.selected {
+    border-color: #1a2333;
+}
+
+.detail-marker-swatch-none {
+    background: #fff;
+    border: 1.5px solid var(--panel-border);
+    color: #9aa0ab;
+    font-size: 14px;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.detail-tag-builder-swatches {
+    display: flex;
+    gap: 6px;
+    padding: 4px 6px 8px;
+}
+
+.detail-tag-builder-swatch {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    border: 2px solid transparent;
+    cursor: pointer;
+    padding: 0;
+}
+
+.detail-tag-builder-swatch.selected {
+    border-color: #1a2333;
+}
+
+.detail-tag-builder-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 0 6px 8px;
+}
+
+.detail-tag-builder-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    padding: 0 6px 8px;
+    max-height: 120px;
+    overflow-y: auto;
+}
+
+.detail-tag-builder-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 11.5px;
+    font-weight: 600;
+    padding: 3px 6px 3px 10px;
+    border-radius: 12px;
+    white-space: nowrap;
+}
+
+.detail-tag-builder-chip-remove {
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    font-size: 13px;
+    line-height: 1;
+    color: inherit;
+    padding: 0;
+    opacity: 0.7;
+}
+
+.detail-tag-builder-chip-remove:hover {
+    opacity: 1;
+}
+
+.detail-tag-builder-save {
+    width: calc(100% - 12px);
+    margin: 4px 6px 2px;
+    justify-content: center;
+}
+
+.tag-chip-red { background: rgba(184, 80, 63, 0.12); color: #b8503f; }
+.tag-chip-green { background: rgba(91, 138, 114, 0.12); color: #5b8a72; }
+.tag-chip-blue { background: rgba(61, 122, 158, 0.12); color: #3d7a9e; }
+.tag-chip-purple { background: rgba(139, 111, 158, 0.12); color: #8b6f9e; }
+.tag-chip-amber { background: rgba(245, 166, 35, 0.14); color: #b9790e; }
+.tag-chip-gray { background: rgba(107, 114, 128, 0.12); color: #6b7280; }
+
+@media (max-width: 900px) {
+    .app-body {
+        flex-direction: column;
+    }
+
+    .app-sidebar {
+        width: 100%;
+        flex-direction: row;
+        overflow-x: auto;
+        padding: 10px;
+    }
+
+    .app-sidebar-brand,
+    .app-sidebar-section-label {
+        display: none;
+    }
+
+    .app-sidebar-nav {
+        flex-direction: row;
+    }
+
+    .app-sidebar-item {
+        white-space: nowrap;
+    }
+
+    .mail-app {
+        flex-direction: column;
+        height: auto;
+    }
+
+    .mail-list-pane {
+        flex: 0 0 auto;
+        max-width: none;
+        max-height: 300px;
+    }
+
+    .mail-preview-pane {
+        min-height: 500px;
+    }
+}
+
+/* ---- Taslak sablonlari (Taslaklar klasoru) ---- */
+.draft-template-panel {
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--panel-border);
+    background: #fafbfc;
+}
+
+.draft-template-panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+    font-size: 12.5px;
+    font-weight: 700;
+    color: #475467;
+}
+
+.draft-template-empty {
+    font-size: 12.5px;
+    margin: 0;
+}
+
+.draft-template-form {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 10px;
+}
+
+.draft-template-input,
+.draft-template-textarea {
+    width: 100%;
+    border: 1.5px solid #e4e7ec;
+    border-radius: 8px;
+    padding: 7px 10px;
+    font-size: 13px;
+    font-family: inherit;
+    resize: vertical;
+}
+
+.draft-template-input:focus,
+.draft-template-textarea:focus {
+    outline: none;
+    border-color: var(--brand-blue);
+}
+
+.draft-template-form-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.btn-chip-danger {
+    color: #dc3545;
+    border-color: #fbd5d8;
+}
+
+.btn-chip-danger:hover {
+    background: #fef2f3;
+    border-color: #dc3545;
+}
+
+.draft-template-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.draft-template-item summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 600;
+    color: #344054;
+    padding: 6px 8px;
+    border-radius: 6px;
+    list-style: none;
+}
+
+.draft-template-item summary::-webkit-details-marker {
+    display: none;
+}
+
+.draft-template-item summary:hover {
+    background: #f1f3f7;
+}
+
+.draft-template-item-title {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.draft-template-delete-trigger {
+    flex: 0 0 auto;
+    width: 26px;
+    height: 26px;
+}
+
+.draft-template-private-badge {
+    display: inline-block;
+    margin-left: 6px;
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: #6941c6;
+    background: #f4f0fe;
+    border-radius: 8px;
+    padding: 1px 7px;
+    vertical-align: middle;
+}
+
+.draft-template-private-check {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12.5px;
+    color: #475467;
+    cursor: pointer;
+}
+
+.draft-template-item form {
+    padding: 8px 8px 4px;
+}
+
+/* ---- Coklu atama rozetleri ve yonetici atama paneli ---- */
+.status-badge-assigned {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.icon-btn-sm {
+    width: 18px;
+    height: 18px;
+    border: none;
+    background: transparent;
+    color: inherit;
+    padding: 0;
+    line-height: 1;
+    font-size: 14px;
+    cursor: pointer;
+    border-radius: 50%;
+}
+
+.icon-btn-sm:hover {
+    background: rgba(0, 0, 0, 0.08);
+}
+
+.admin-assign-panel summary {
+    list-style: none;
+    cursor: pointer;
+}
+
+.admin-assign-panel summary::-webkit-details-marker {
+    display: none;
+}
+
+.admin-assign-form {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 10px 12px;
+    margin-top: 6px;
+    border: 1.5px solid #e4e7ec;
+    border-radius: 10px;
+    background: #fff;
+    position: absolute;
+    z-index: 20;
+}
+
+.admin-assign-employee-check {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12.5px;
+    color: #475467;
+    cursor: pointer;
+}
+
+.draft-template-select {
+    border: 1.5px solid #e4e7ec;
+    border-radius: 8px;
+    padding: 5px 8px;
+    font-size: 12.5px;
+    color: #475467;
+    background: #fff;
+    max-width: 160px;
+}
+
+/* ---- Yonetici paneli ---- */
+.admin-page {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+    padding: 24px;
+    max-width: 900px;
+}
+
+.admin-panel {
+    background: #fff;
+    border: 1px solid #eceef2;
+    border-radius: 12px;
+    padding: 20px;
+}
+
+.admin-panel h2 {
+    font-size: 16px;
+    margin: 0 0 14px;
+}
+
+.admin-panel h3 {
+    font-size: 14px;
+    margin: 18px 0 10px;
+}
+
+.admin-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.admin-table th, .admin-table td {
+    text-align: left;
+    padding: 8px 6px;
+    border-bottom: 1px solid #f0f1f4;
+    font-size: 13px;
+    vertical-align: middle;
+}
+
+.admin-input {
+    border: 1.5px solid #e4e7ec;
+    border-radius: 8px;
+    padding: 6px 10px;
+    font-size: 13px;
+    color: #344054;
+    width: 100%;
+}
+
+.admin-inline-form {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.admin-inline-form .admin-input {
+    width: auto;
+    flex: 1 1 auto;
+}
+
+.admin-form {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    max-width: 420px;
+}
+
+.admin-form-row {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.send-to-all-check {
+    padding: 6px 0;
+    border-bottom: 1px solid #f0f1f4;
+    margin-bottom: 4px;
+}
+
+.admin-recipient-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    max-height: 220px;
+    overflow-y: auto;
+    padding: 8px 10px;
+    border: 1.5px solid #e4e7ec;
+    border-radius: 8px;
+}
+
+.admin-recipient-list-disabled {
+    opacity: 0.5;
+}
+
+/* ---- Bildirim zili ---- */
+.notification-bell-wrapper {
+    position: relative;
+}
+
+.notification-badge {
+    position: absolute;
+    top: 2px;
+    right: 2px;
+    background: #dc3545;
+    color: #fff;
+    font-size: 10px;
+    font-weight: 700;
+    line-height: 1;
+    min-width: 16px;
+    height: 16px;
+    border-radius: 8px;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 0 3px;
+}
+
+.notification-badge.visible {
+    display: flex;
+}
+
+.notification-panel {
+    position: absolute;
+    top: calc(100% + 8px);
+    right: 0;
+    width: 320px;
+    max-height: 400px;
+    overflow-y: auto;
+    background: #fff;
+    border: 1px solid #eceef2;
+    border-radius: 12px;
+    box-shadow: 0 8px 24px rgba(20, 25, 40, 0.12);
+    display: none;
+    z-index: 60;
+}
+
+.notification-panel.open {
+    display: block;
+}
+
+.notification-item {
+    padding: 10px 14px;
+    border-bottom: 1px solid #f4f5f8;
+    font-size: 12.5px;
+}
+
+.notification-item:last-child {
+    border-bottom: none;
+}
+
+.notification-item-header {
+    display: flex;
+    justify-content: space-between;
+    color: #6b7280;
+    font-size: 11px;
+    margin-bottom: 3px;
+}
+
+.notification-item.unread {
+    background: #f5f9ff;
+}
+
+.notification-empty {
+    padding: 16px;
+    text-align: center;
+    color: #9aa0ab;
+    font-size: 12.5px;
+}
+
+.notification-reply-trigger {
+    border: none;
+    background: transparent;
+    color: var(--brand-blue);
+    font-size: 11.5px;
+    font-weight: 600;
+    padding: 4px 0 0;
+    cursor: pointer;
+}
+
+.notification-reply-form {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-top: 6px;
+}
+
+.notification-reply-form textarea {
+    border: 1.5px solid #e4e7ec;
+    border-radius: 8px;
+    padding: 6px 8px;
+    font-size: 12px;
+    resize: vertical;
+}
+
+.notification-reply-form button {
+    align-self: flex-end;
+    border: 1.5px solid #e4e7ec;
+    background: #fff;
+    border-radius: 8px;
+    padding: 4px 10px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    color: #475467;
+}
+
+/* =========================================================
+   Toplu islem: satir secim kutulari + secim oldugunda goruntulenen
+   arac cubugu (detay sayfasindaki atama/bayrak/etiket/diger ile ayni
+   davranis ve gorunum, ama coklu mail Id'si uzerinde calisir).
+   ========================================================= */
+.task-row-wrap {
+    position: relative;
+    display: flex;
+    align-items: stretch;
+}
+
+.task-row-wrap > a {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.task-row-check {
+    display: flex;
+    align-items: center;
+    flex-shrink: 0;
+    padding: 0 4px 0 14px;
+    cursor: pointer;
+}
+
+.task-row-checkbox {
+    width: 16px;
+    height: 16px;
+    margin: 0;
+    cursor: pointer;
+    accent-color: var(--brand-blue);
+}
+
+.bulk-action-bar {
+    display: none;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--panel-border);
+    background: #f3f7fb;
+}
+
+.bulk-action-count {
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--brand-blue);
+    white-space: nowrap;
+}
+
+.bulk-action-bar-clear {
+    margin-left: auto;
+}
+

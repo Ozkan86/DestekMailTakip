@@ -1,0 +1,114 @@
+@model EngineerStatsPageViewModel
+@{
+    Layout = "_Layout";
+    ViewData["Title"] = "İstatistiklerim";
+}
+
+<div class="stats-page">
+    <h2 class="stats-page-title">İstatistiklerim</h2>
+
+    <div class="stats-columns">
+        <section class="stats-column">
+            <h3 class="stats-column-title">Destek Mail Sistemi</h3>
+            <div class="stats-tiles">
+                <div class="stats-tile">
+                    <div class="stats-tile-value">@Model.Mail.TotalMine</div>
+                    <div class="stats-tile-label">Toplam Bana Ait Görevler</div>
+                </div>
+                <div class="stats-tile">
+                    <div class="stats-tile-value">@Model.Mail.ClosedCount</div>
+                    <div class="stats-tile-label">Kapatılmış Görevler</div>
+                </div>
+                <button type="button" class="stats-tile stats-tile-drawer" data-drawer-url="@Url.Action("MessagesDrawer")" data-drawer-target="messagesDrawer">
+                    <div class="stats-tile-value">@Model.Mail.NewMessagesCount</div>
+                    <div class="stats-tile-label">Görevlerime Ait Mesajlar</div>
+                </button>
+                <div class="stats-tile">
+                    <div class="stats-tile-value">@Model.Mail.NewAssignedCount</div>
+                    <div class="stats-tile-label">Yeni Atananlar</div>
+                </div>
+            </div>
+            <div id="messagesDrawer" class="stats-drawer"></div>
+        </section>
+
+        <section class="stats-column">
+            <h3 class="stats-column-title">Panolar</h3>
+            <div class="stats-tiles">
+                <div class="stats-tile">
+                    <div class="stats-tile-value">@Model.Board.MyCardsCount</div>
+                    <div class="stats-tile-label">Bana Ait</div>
+                </div>
+                <button type="button" class="stats-tile stats-tile-drawer" data-drawer-url="@Url.Action("OtherApprovalsDrawer")" data-drawer-target="otherApprovalsDrawer">
+                    <div class="stats-tile-value">@Model.Board.OtherApprovedCount / @Model.Board.OtherRejectedCount</div>
+                    <div class="stats-tile-label">Diğer Onay/Red</div>
+                </button>
+                <button type="button" class="stats-tile stats-tile-drawer" data-drawer-url="@Url.Action("MyApprovalsDrawer")" data-drawer-target="myApprovalsDrawer">
+                    <div class="stats-tile-value">@Model.Board.MyApprovedCount / @Model.Board.MyRejectedCount</div>
+                    <div class="stats-tile-label">Bana Ait Onay/Red</div>
+                </button>
+                <button type="button" class="stats-tile stats-tile-drawer" data-drawer-url="@Url.Action("LabelsCommentsDrawer")" data-drawer-target="labelsCommentsDrawer">
+                    <div class="stats-tile-value">@Model.Board.LabelsAddedCount / @Model.Board.CommentsAddedCount</div>
+                    <div class="stats-tile-label">Etiketler/Yorumlar</div>
+                </button>
+            </div>
+            <div id="otherApprovalsDrawer" class="stats-drawer"></div>
+            <div id="myApprovalsDrawer" class="stats-drawer"></div>
+            <div id="labelsCommentsDrawer" class="stats-drawer"></div>
+        </section>
+    </div>
+
+    @* ---- Mail klasorleri: "Bana Ait" ve "Bana Ait Kapatılmış" ----
+       Iceride mail klasor gorunumunun TA KENDISI calisir (MailController.Index,
+       embedded=true). Boylece liste tasarimi, toplu islem cubugu, okundu/
+       okunmadi filtreleri ve satira tiklayinca acilan mail detayi klasorlerdeki
+       ile birebir aynidir; burada yeniden yazilan bir sey yoktur. *@
+    <section class="stats-embed-section">
+        <h3 class="stats-column-title">Bana Ait Görevler</h3>
+        <div class="stats-embed-frame">
+            <iframe title="Bana Ait Görevler"
+                    src="@Url.Action("Index", "Mail", new { folder = MailFolders.Mine, embedded = true })"></iframe>
+        </div>
+    </section>
+
+    <section class="stats-embed-section">
+        <h3 class="stats-column-title">Bana Ait Kapatılmış</h3>
+        <div class="stats-embed-frame">
+            @* onlyMine=true: kapatilmis VE bu mühendisin uzerinde olan gorevler.
+               Filtre cipi gomulu modda gizlidir (bkz. _MailListPane), kapsam sabit. *@
+            <iframe title="Bana Ait Kapatılmış"
+                    src="@Url.Action("Index", "Mail", new { folder = MailFolders.Closed, onlyMine = true, embedded = true })"></iframe>
+        </div>
+    </section>
+
+    @* Iceride "Pano Görevlerim" sayfasinin TA KENDISI calisir
+       (BoardController.MyTasks, embedded=true): kart tasarimi ve butonlar
+       birebir aynidir. Kart islemleri panoya yonlendirdigi icin formlar ust
+       pencereyi hedefler, yani davranis da o sayfadakiyle ayni. *@
+    <section class="stats-embed-section">
+        <h3 class="stats-column-title">Bana Ait Kartlar</h3>
+        <div class="stats-embed-frame">
+            <iframe title="Bana Ait Kartlar"
+                    src="@Url.Action("MyTasks", "Board", new { embedded = true })"></iframe>
+        </div>
+    </section>
+
+    <section class="stats-notes">
+        <div class="stats-notes-header">
+            <h3 class="stats-column-title">Notlarım</h3>
+            <button type="button" id="statsAddNoteTrigger" class="stats-note-add-btn" title="Not ekle">+</button>
+        </div>
+        <form id="statsAddNoteForm" class="stats-note-form" style="display:none;">
+            @Html.AntiForgeryToken()
+            <textarea name="body" maxlength="2000" placeholder="Notunuzu yazın..." required></textarea>
+            <div class="stats-note-form-actions">
+                <button type="submit" class="btn-chip btn-chip-primary">Kaydet</button>
+                <button type="button" id="statsCancelNoteBtn" class="btn-chip">Vazgeç</button>
+            </div>
+        </form>
+        <div id="statsNotesList">
+            <partial name="_NotesList" model="Model.Notes" />
+        </div>
+    </section>
+</div>
+
+<script src="~/js/stats-page.js" asp-append-version="true"></script>

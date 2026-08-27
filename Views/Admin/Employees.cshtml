@@ -1,0 +1,137 @@
+@model EmployeesPageViewModel
+@{
+    ViewData["Title"] = "Çalışan Yönetimi";
+}
+
+<div class="admin-page">
+    @if (TempData["AdminMessage"] is string adminMessage)
+    {
+        <div class="alert alert-success">@adminMessage</div>
+    }
+
+    @if (!ViewData.ModelState.IsValid)
+    {
+        <div class="alert alert-danger">
+            <ul class="mb-0">
+                @foreach (var error in ViewData.ModelState.Values.SelectMany(v => v.Errors))
+                {
+                    <li>@error.ErrorMessage</li>
+                }
+            </ul>
+        </div>
+    }
+
+    <div class="admin-panel">
+        <h2>Çalışanlar</h2>
+
+        <table class="admin-table">
+            <thead>
+                <tr>
+                    <th>Kullanıcı Adı</th>
+                    <th>Ad Soyad</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (!Model.Employees.Any())
+                {
+                    <tr><td colspan="3" class="text-muted">Henüz çalışan eklenmedi.</td></tr>
+                }
+                @foreach (var employee in Model.Employees)
+                {
+                    <tr>
+                        <td>@employee.UserName</td>
+                        <td>
+                            <form asp-action="EditEmployee" method="post" class="admin-inline-form">
+                                <input type="hidden" name="Id" value="@employee.Id" />
+                                <input type="text" name="DisplayName" value="@employee.DisplayName" class="admin-input" required />
+                                <input type="password" name="NewPassword" placeholder="Yeni şifre (opsiyonel)" class="admin-input" />
+                                <button type="submit" class="btn-chip">Güncelle</button>
+                            </form>
+                        </td>
+                        <td>
+                            <form asp-action="DeleteEmployee" method="post"
+                                  data-ui-confirm-title="Çalışanı sil"
+                                  data-ui-confirm="@employee.DisplayName adlı çalışan silinecek. Bu işlem geri alınamaz."
+                                  data-ui-confirm-ok="Sil"
+                                  data-ui-confirm-tone="danger">
+                                <input type="hidden" name="id" value="@employee.Id" />
+                                <button type="submit" class="btn-chip btn-chip-danger">Sil</button>
+                            </form>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+
+        <h3>Yeni Çalışan Ekle</h3>
+        <form asp-action="CreateEmployee" method="post" class="admin-form">
+            <div class="admin-form-row">
+                <label class="form-label">Kullanıcı Adı</label>
+                <input type="text" name="UserName" value="@Model.NewEmployee.UserName" class="admin-input" required />
+            </div>
+            <div class="admin-form-row">
+                <label class="form-label">Ad Soyad</label>
+                <input type="text" name="DisplayName" value="@Model.NewEmployee.DisplayName" class="admin-input" required />
+            </div>
+            <div class="admin-form-row">
+                <label class="form-label">Şifre</label>
+                <input type="password" name="Password" class="admin-input" required />
+            </div>
+            <button type="submit" class="btn-chip btn-chip-primary">Çalışan Oluştur</button>
+        </form>
+    </div>
+
+    <div class="admin-panel">
+        <h2>Mesaj Gönder</h2>
+        <form asp-action="SendMessage" method="post" class="admin-form">
+            <div class="admin-form-row">
+                <label class="form-label">Alıcılar</label>
+                <label class="admin-assign-employee-check send-to-all-check">
+                    <input type="checkbox" name="SendToAll" value="true" id="sendToAllCheck" checked="@(Model.NewMessage.SendToAll ? "checked" : null)" />
+                    <strong>Tüm çalışanlara gönder</strong>
+                </label>
+                <div id="recipientEmployeeList" class="admin-recipient-list">
+                    @if (!Model.Employees.Any())
+                    {
+                        <span class="text-muted">Henüz çalışan eklenmedi.</span>
+                    }
+                    @foreach (var employee in Model.Employees)
+                    {
+                        <label class="admin-assign-employee-check">
+                            <input type="checkbox" name="RecipientUserIds" value="@employee.Id"
+                                   checked="@(Model.NewMessage.RecipientUserIds.Contains(employee.Id) ? "checked" : null)" />
+                            @employee.DisplayName
+                        </label>
+                    }
+                </div>
+            </div>
+            <div class="admin-form-row">
+                <label class="form-label">Mesaj</label>
+                <textarea name="Body" class="admin-input" rows="3" required>@Model.NewMessage.Body</textarea>
+            </div>
+            <button type="submit" class="btn-chip btn-chip-primary">Gönder</button>
+        </form>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        var sendToAll = document.getElementById('sendToAllCheck');
+        var recipientList = document.getElementById('recipientEmployeeList');
+        if (!sendToAll || !recipientList) {
+            return;
+        }
+
+        function syncRecipientState() {
+            var disabled = sendToAll.checked;
+            recipientList.querySelectorAll('input[type="checkbox"]').forEach(function (checkbox) {
+                checkbox.disabled = disabled;
+            });
+            recipientList.classList.toggle('admin-recipient-list-disabled', disabled);
+        }
+
+        sendToAll.addEventListener('change', syncRecipientState);
+        syncRecipientState();
+    });
+</script>

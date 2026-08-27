@@ -1,0 +1,116 @@
+@using Microsoft.AspNetCore.Identity
+@using task_list.Data
+@inject IMailRepository MailRepository
+@inject UserManager<ApplicationUser> UserManager
+@{
+    var isAuthenticated = User.Identity?.IsAuthenticated == true;
+    var activeFolder = Context.Request.Query["folder"].ToString();
+    if (string.IsNullOrEmpty(activeFolder))
+    {
+        activeFolder = MailFolders.Unassigned;
+    }
+    var counts = new Dictionary<string, int>();
+    var customFolders = new List<MailUserFolder>();
+
+    if (isAuthenticated)
+    {
+        var userId = UserManager.GetUserId(User);
+        if (!string.IsNullOrEmpty(userId))
+        {
+            counts = await MailRepository.GetFolderCountsAsync(userId);
+            customFolders = await MailRepository.GetUserFoldersAsync(userId);
+        }
+    }
+}
+
+@if (isAuthenticated)
+{
+    <aside class="app-sidebar">
+        <div class="app-sidebar-brand">
+            <img src="~/assets/creamobile-icon.png" alt="Creamobile" />
+            <span>Destek Kutusu</span>
+        </div>
+
+        <div class="app-sidebar-section-label">Klasörler</div>
+
+        <nav class="app-sidebar-nav">
+            @foreach (var (key, label, iconSvg) in MailFolders.All)
+            {
+                var count = counts.TryGetValue(key, out var c) ? c : 0;
+                var itemClasses = "app-sidebar-item" + (key == activeFolder ? " active" : "");
+
+                <a class="@itemClasses" asp-controller="Mail" asp-action="Index" asp-route-folder="@key">
+                    <span class="app-sidebar-item-label">
+                        <svg class="app-sidebar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">@Html.Raw(iconSvg)</svg>
+                        @label
+                    </span>
+                    @if (count > 0)
+                    {
+                        <span class="app-sidebar-count">@count</span>
+                    }
+                </a>
+            }
+        </nav>
+
+        <div class="app-sidebar-section-label">
+            Klasörlerim
+            <button type="button" id="newFolderToggle" class="app-sidebar-add-btn" title="Klasör ekle">+</button>
+        </div>
+
+        <form id="newFolderForm" asp-controller="Mail" asp-action="CreateMailFolder" method="post" class="app-sidebar-new-folder-form" style="display:none;">
+            <input type="hidden" name="folder" value="@activeFolder" />
+            <input type="text" name="name" maxlength="200" required placeholder="Klasör adı" class="app-sidebar-new-folder-input" />
+            <button type="submit" class="btn-chip btn-chip-primary">Ekle</button>
+        </form>
+
+        <nav class="app-sidebar-nav app-sidebar-nav-custom-folders">
+            @if (!customFolders.Any())
+            {
+                <span class="app-sidebar-empty-note">Henüz klasörünüz yok.</span>
+            }
+            @foreach (var customFolder in customFolders)
+            {
+                var key = MailFolders.CustomFolderPrefix + customFolder.Id;
+                var itemClasses = "app-sidebar-item" + (key == activeFolder ? " active" : "");
+
+                <div class="app-sidebar-item-wrap">
+                    <a class="@itemClasses" asp-controller="Mail" asp-action="Index" asp-route-folder="@key">
+                        <span class="app-sidebar-item-label">
+                            <svg class="app-sidebar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7v13h18V7" /><path d="M1 3h22v4H1z" /></svg>
+                            @customFolder.Name
+                        </span>
+                        @if (customFolder.Count > 0)
+                        {
+                            <span class="app-sidebar-count">@customFolder.Count</span>
+                        }
+                    </a>
+                    <form asp-controller="Mail" asp-action="DeleteMailFolder" method="post" class="app-sidebar-delete-folder-form"
+                          data-ui-confirm-title="Klasörü sil"
+                          data-ui-confirm="&quot;@customFolder.Name&quot; klasörü silinecek. İçindeki mailler silinmez, yalnızca klasörden çıkarılır."
+                          data-ui-confirm-ok="Sil"
+                          data-ui-confirm-tone="danger">
+                        <input type="hidden" name="id" value="@customFolder.Id" />
+                        <input type="hidden" name="folder" value="@activeFolder" />
+                        <button type="submit" class="icon-btn icon-btn-sm" title="Klasörü sil">&times;</button>
+                    </form>
+                </div>
+            }
+        </nav>
+    </aside>
+}
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        var toggle = document.getElementById('newFolderToggle');
+        var form = document.getElementById('newFolderForm');
+        if (toggle && form) {
+            toggle.addEventListener('click', function () {
+                form.style.display = form.style.display === 'none' ? '' : 'none';
+                var input = form.querySelector('.app-sidebar-new-folder-input');
+                if (form.style.display !== 'none' && input) {
+                    input.focus();
+                }
+            });
+        }
+    });
+</script>

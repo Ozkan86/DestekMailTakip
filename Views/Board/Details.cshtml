@@ -1,0 +1,195 @@
+@model Board
+@{
+    var isCustomer = User.IsInRole("Customer");
+    Layout = isCustomer ? "_BoardLayout" : "_Layout";
+    ViewData["Title"] = Model.Title;
+
+    var canAddCard = ViewData["CanAddCard"] as bool? ?? false;
+    var isEngineer = ViewData["IsEngineer"] as bool? ?? false;
+    var currentUserId = ViewData["CurrentUserId"] as string ?? string.Empty;
+}
+
+<div class="board-page-header">
+    <div>
+        <h2>@Model.Title</h2>
+        <div class="board-list-item-meta">@Model.CreatedByDisplayName &middot; @Model.CreatedAt.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</div>
+    </div>
+    <a class="board-header-btn board-header-btn-back" asp-action="Index" title="Pano listesine dön">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12" /><polyline points="12 19 5 12 12 5" /></svg>
+        Panolar
+    </a>
+</div>
+
+@if (TempData["BoardError"] is string boardError)
+{
+    <div class="alert alert-danger">@boardError</div>
+}
+
+@if (Model.IsPreview)
+{
+    <div class="board-preview-banner">
+        <span>🔍 Bu bir şablon önizlemesidir. Yaptığınız tüm değişiklikler geçicidir ve önizlemeyi durdurduğunuzda (veya yeniden başlattığınızda) silinir.</span>
+        <form asp-action="StopPreview" asp-route-boardId="@Model.Id" method="post"
+              data-ui-confirm-title="Önizlemeyi durdur"
+              data-ui-confirm="Önizleme sırasında yaptığınız tüm değişiklikler silinecek. Devam etmek istiyor musunuz?"
+              data-ui-confirm-ok="Durdur"
+              data-ui-confirm-tone="warning">
+            @Html.AntiForgeryToken()
+            <button type="submit" class="btn-chip">Önizlemeyi Durdur</button>
+        </form>
+    </div>
+}
+
+<form id="boardAntiForgeryForm" style="display:none;">
+    @Html.AntiForgeryToken()
+</form>
+
+@if (Model.TemplateKey != BoardTemplates.Klasik)
+{
+    <partial name="_GenericBoardColumns" model="Model" />
+}
+else
+{
+<div class="board-columns">
+    @foreach (var (key, label, iconSvg) in BoardLists.All)
+    {
+        var cards = key switch
+        {
+            BoardLists.Todo => Model.TodoCards,
+            BoardLists.Test => Model.TestCards,
+            _ => Model.DoneCards
+        };
+
+        var columnColor = Model.GetListColor(key);
+
+        <div class="board-column" data-list-key="@key" style="@(columnColor is not null ? $"background:{columnColor};" : "")">
+            <div class="board-column-header">
+                <svg class="board-column-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">@Html.Raw(iconSvg)</svg>
+                <h3 class="board-column-title">@label</h3>
+                <span class="board-column-count">@cards.Count</span>
+
+                <button type="button" class="board-column-collapse-btn" title="Daralt/Genişlet">
+                    <svg class="board-collapse-icon-expanded" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 8 12 3 18" /><polyline points="21 6 16 12 21 18" /></svg>
+                    <svg class="board-collapse-icon-collapsed" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><polyline points="8 6 3 12 8 18" /><polyline points="16 6 21 12 16 18" /></svg>
+                </button>
+
+                <details class="board-column-menu">
+                    <summary class="board-column-menu-trigger" title="Diğer seçenekler">&#8942;</summary>
+                    <div class="board-column-menu-panel">
+                        <div class="board-column-menu-title">Arkaplan rengi</div>
+                        <div class="board-column-color-row">
+                            @foreach (var (colorValue, colorLabel) in BoardLists.ColorPalette)
+                            {
+                                var isSelected = string.Equals(colorValue, columnColor, StringComparison.OrdinalIgnoreCase);
+                                <form asp-action="SetListColor" asp-route-boardId="@Model.Id" method="post" class="board-column-color-form">
+                                    <input type="hidden" name="listKey" value="@key" />
+                                    <input type="hidden" name="color" value="@colorValue" />
+                                    <button type="submit"
+                                            class="board-column-color-swatch@(isSelected ? " selected" : "")@(colorValue is null ? " board-column-color-swatch-none" : "")"
+                                            style="@(colorValue is not null ? $"background:{colorValue};" : "")"
+                                            title="@colorLabel"></button>
+                                </form>
+                            }
+                        </div>
+                    </div>
+                </details>
+            </div>
+
+            <div class="board-column-body">
+                @if (!cards.Any())
+                {
+                    <p class="board-empty-note">Bu kolonda madde yok.</p>
+                }
+                else
+                {
+                    @foreach (var card in cards)
+                    {
+                        <partial name="_BoardCardItem" model="(card, Model.Id, key, isEngineer, canAddCard, currentUserId)" />
+                    }
+                }
+
+                @if (key == BoardLists.Todo && canAddCard)
+                {
+                    <button type="button" class="board-add-card-btn">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
+                        <span>Kart Ekle</span>
+                    </button>
+                    <form asp-action="AddCard" asp-route-boardId="@Model.Id" method="post" class="board-add-card-form" style="display:none;">
+                        <input type="text" name="Title" class="form-control" placeholder="Başlık" required maxlength="300" />
+                        <textarea name="Description" class="form-control" placeholder="Açıklama (opsiyonel)"></textarea>
+                        <div class="board-add-card-form-actions">
+                            <button type="submit" class="btn-chip btn-chip-primary">Ekle</button>
+                            <button type="button" class="board-add-card-close-btn" title="Kapat">&times;</button>
+                        </div>
+                    </form>
+                }
+            </div>
+        </div>
+    }
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        document.querySelectorAll('.board-column-collapse-btn').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                var column = btn.closest('.board-column');
+                column.classList.toggle('collapsed');
+            });
+        });
+
+        // Bir kolonun uc-nokta menusu acikken baska bir kolonun menusunu
+        // acmak oncekini kapatsin (birden fazla native <details> ayni anda
+        // acik kalmasin).
+        var menus = document.querySelectorAll('.board-column-menu');
+        menus.forEach(function (menu) {
+            menu.addEventListener('toggle', function () {
+                if (menu.open) {
+                    menus.forEach(function (other) {
+                        if (other !== menu) {
+                            other.open = false;
+                        }
+                    });
+                }
+            });
+        });
+
+        // "Kart Ekle" butonu <-> ekleme formu gecisi.
+        document.querySelectorAll('.board-add-card-btn').forEach(function (btn) {
+            var form = btn.nextElementSibling;
+            btn.addEventListener('click', function () {
+                btn.style.display = 'none';
+                form.style.display = '';
+                var titleInput = form.querySelector('input[name="Title"]');
+                if (titleInput) {
+                    titleInput.focus();
+                }
+            });
+
+            var closeBtn = form.querySelector('.board-add-card-close-btn');
+            if (closeBtn) {
+                closeBtn.addEventListener('click', function () {
+                    form.style.display = 'none';
+                    form.reset();
+                    btn.style.display = '';
+                });
+            }
+        });
+    });
+</script>
+}
+
+@* "İstatistiklerim" sayfasindaki cekmecelerden gelinen kart vurgusu (bkz. StatsController
+   drawer'lari, ?highlightCardId=...). If/else'in disinda, boylece hem Klasik hem jenerik
+   sablonlarda (bkz. _GenericBoardColumns.cshtml) calisir. *@
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        var highlightCardId = @(ViewData["HighlightCardId"] is int hcid ? hcid.ToString() : "null");
+        if (highlightCardId) {
+            var highlightedCard = document.querySelector('.board-card[data-card-id="' + highlightCardId + '"]');
+            if (highlightedCard) {
+                highlightedCard.classList.add('board-card-highlighted');
+                highlightedCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+        }
+    });
+</script>

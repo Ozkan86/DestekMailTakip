@@ -1,0 +1,331 @@
+@using Microsoft.AspNetCore.Identity
+@inject UserManager<ApplicationUser> UserManager
+@{
+    var isAuthenticated = User.Identity?.IsAuthenticated == true;
+    string displayName = string.Empty;
+    string email = string.Empty;
+
+    if (isAuthenticated)
+    {
+        var currentUser = await UserManager.GetUserAsync(User);
+        displayName = currentUser?.DisplayName ?? string.Empty;
+        email = currentUser?.Email ?? User.Identity!.Name ?? string.Empty;
+    }
+}
+
+<header class="app-topbar">
+    <div class="app-topbar-left">
+        @if (isAuthenticated && (User.IsInRole("Employee") || User.IsInRole("Admin")))
+        {
+            <a class="app-topbar-nav-link" asp-controller="Board" asp-action="Index">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" /><line x1="9" y1="3" x2="9" y2="21" /><line x1="15" y1="3" x2="15" y2="21" /></svg>
+                Panolar
+            </a>
+
+            @* Destek maillerini elle senkronize et. Periyodik senkronizasyon
+               calismaya devam eder; bu buton sadece sirayi beklemeden hemen bir
+               tur tetikler (bkz. MailController.SyncNow). *@
+            <button type="button" id="mailSyncTrigger" class="app-topbar-nav-link app-topbar-sync-btn" title="Mailleri şimdi senkronize et">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2v6h-6" /><path d="M3 12a9 9 0 0 1 15-6.7L21 8" /><path d="M3 22v-6h6" /><path d="M21 12a9 9 0 0 1-15 6.7L3 16" /></svg>
+                Senkronize Et
+            </button>
+        }
+    </div>
+
+    <div class="app-topbar-right">
+        @if (isAuthenticated)
+        {
+            <div id="topbarSearchWrapper" class="topbar-search">
+                <input type="text" id="topbarSearchInput" class="topbar-search-input" placeholder="Gönderen adına göre ara..." autocomplete="off" />
+                <button type="button" id="topbarSearchTrigger" class="topbar-icon-btn" title="Ara">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="11" cy="11" r="8" />
+                        <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                    </svg>
+                </button>
+            </div>
+
+            <div class="notification-bell-wrapper">
+                <button type="button" id="notificationBellTrigger" class="topbar-icon-btn" title="Bildirimler">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+                        <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+                    </svg>
+                    <span id="notificationBadge" class="notification-badge"></span>
+                </button>
+                <div id="notificationPanel" class="notification-panel"></div>
+            </div>
+
+            <div class="topbar-profile">
+                <button type="button" id="profileMenuTrigger" class="topbar-icon-btn" title="Profil">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>
+                </button>
+                <div id="profileMenu" class="topbar-profile-menu">
+                    <div class="topbar-profile-menu-header">
+                        @if (User.IsInRole("Employee") || User.IsInRole("Admin"))
+                        {
+                            @* Rozet, ust satirdaki ad yazisinin solunda; alttaki kullanici
+                               adi ise rozetle ayni sol hizadan baslar. *@
+                            <a class="topbar-profile-name-link topbar-profile-badge-name-row" asp-controller="Stats" asp-action="Index" title="İstatistiklerim">
+                                <span class="topbar-engineer-badge" aria-hidden="true">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+                                        <circle cx="12" cy="8" r="6" />
+                                        <path d="M9 13.5 7.5 21l4.5-2.5 4.5 2.5-1.5-7.5" />
+                                    </svg>
+                                </span>
+                                <span class="topbar-profile-menu-name">@(string.IsNullOrEmpty(displayName) ? email : displayName)</span>
+                            </a>
+                            @if (!string.IsNullOrEmpty(displayName))
+                            {
+                                <div class="topbar-profile-menu-email">@email</div>
+                            }
+                        }
+                        else
+                        {
+                            <div class="topbar-profile-text-col">
+                                <div class="topbar-profile-menu-name">@(string.IsNullOrEmpty(displayName) ? email : displayName)</div>
+                                @if (!string.IsNullOrEmpty(displayName))
+                                {
+                                    <div class="topbar-profile-menu-email">@email</div>
+                                }
+                            </div>
+                        }
+                    </div>
+                    @if (User.IsInRole("Admin"))
+                    {
+                        <a asp-controller="Admin" asp-action="Employees" class="topbar-profile-menu-item">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>
+                            Çalışan Yönetimi
+                        </a>
+                    }
+                    <a asp-controller="Account" asp-action="Settings" class="topbar-profile-menu-item">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" /></svg>
+                        Hesap Ayarları
+                    </a>
+                    <form asp-controller="Account" asp-action="Logout" method="post">
+                        <button type="submit" class="topbar-profile-menu-item">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /><polyline points="16 17 21 12 16 7" /><line x1="21" y1="12" x2="9" y2="12" /></svg>
+                            Çıkış Yap
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+            <form id="markAllReadForm" method="post" style="display:none;">
+                @Html.AntiForgeryToken()
+            </form>
+        }
+        else
+        {
+            <a class="topbar-icon-btn" asp-controller="Account" asp-action="Login" title="Giriş Yap">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4" /><polyline points="10 17 15 12 10 7" /><line x1="15" y1="12" x2="3" y2="12" /></svg>
+            </a>
+        }
+    </div>
+</header>
+
+<script>
+    (function () {
+        var trigger = document.getElementById('profileMenuTrigger');
+        var menu = document.getElementById('profileMenu');
+        if (!trigger || !menu) {
+            return;
+        }
+
+        trigger.addEventListener('click', function (ev) {
+            ev.stopPropagation();
+            var opening = !menu.classList.contains('open');
+            window.closeNotificationPanel && window.closeNotificationPanel();
+            menu.classList.toggle('open', opening);
+        });
+
+        document.addEventListener('click', function (ev) {
+            if (!menu.contains(ev.target) && ev.target !== trigger) {
+                menu.classList.remove('open');
+            }
+        });
+
+        window.closeProfileMenu = function () {
+            menu.classList.remove('open');
+        };
+    })();
+
+    // ---- Manuel mail senkronizasyonu (navbar butonu) ----
+    // Periyodik senkronizasyonun yerini almaz, sadece sirayi beklemeden hemen
+    // bir tur tetikler. Sonucu bildirim (toast) olarak gosterir; yeni mail
+    // geldiyse acik mail listesini de tazeler.
+    (function () {
+        var trigger = document.getElementById('mailSyncTrigger');
+        if (!trigger) {
+            return;
+        }
+
+        var busy = false;
+
+        trigger.addEventListener('click', function () {
+            if (busy) {
+                return;
+            }
+            busy = true;
+            trigger.classList.add('is-syncing');
+            trigger.disabled = true;
+
+            var tokenForm = document.getElementById('markAllReadForm');
+            var body = new URLSearchParams();
+            body.set('__RequestVerificationToken', tokenForm.querySelector('input[name="__RequestVerificationToken"]').value);
+
+            fetch('/Mail/SyncNow', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: body.toString()
+            })
+                .then(function (r) {
+                    if (!r.ok) {
+                        throw new Error('sync-failed');
+                    }
+                    return r.json();
+                })
+                .then(function (data) {
+                    if (data.failed) {
+                        UiDialog.toast({ message: 'Senkronizasyon sırasında bir hata oluştu.', tone: 'error' });
+                        return;
+                    }
+
+                    if (!data.ran) {
+                        // Arka planda zaten bir tur suruyordu; kullaniciya yanlis
+                        // bilgi vermemek icin ayri bir mesaj gosterilir.
+                        UiDialog.toast({ message: 'Senkronizasyon zaten sürüyor.', tone: 'info' });
+                        return;
+                    }
+
+                    if (data.imported > 0) {
+                        UiDialog.toast({ message: data.imported + ' yeni mail alındı.', tone: 'success' });
+                        // Mail listesi acikken beklemeden tazelenir (bkz. Mail/Index.cshtml).
+                        if (window.refreshMailListPane) {
+                            window.refreshMailListPane();
+                        }
+                    } else {
+                        UiDialog.toast({ message: 'Yeni mail yok.', tone: 'info' });
+                    }
+                })
+                .catch(function () {
+                    UiDialog.toast({ message: 'Senkronizasyon sırasında bir hata oluştu.', tone: 'error' });
+                })
+                .finally(function () {
+                    busy = false;
+                    trigger.classList.remove('is-syncing');
+                    trigger.disabled = false;
+                });
+        });
+    })();
+
+    (function () {
+        var bellTrigger = document.getElementById('notificationBellTrigger');
+        var badge = document.getElementById('notificationBadge');
+        var panel = document.getElementById('notificationPanel');
+        if (!bellTrigger || !badge || !panel) {
+            return;
+        }
+
+        function refreshUnreadCount() {
+            fetch('/Notifications/UnreadCount')
+                .then(function (r) { return r.json(); })
+                .then(function (data) {
+                    if (data.count > 0) {
+                        badge.textContent = data.count > 99 ? '99+' : data.count;
+                        badge.classList.add('visible');
+                    } else {
+                        badge.classList.remove('visible');
+                    }
+                })
+                .catch(function () { });
+        }
+
+        function getToken() {
+            var form = document.getElementById('markAllReadForm');
+            return form.querySelector('input[name="__RequestVerificationToken"]').value;
+        }
+
+        function postForm(url, fields) {
+            var body = new URLSearchParams();
+            body.set('__RequestVerificationToken', getToken());
+            Object.keys(fields).forEach(function (key) {
+                body.set(key, fields[key]);
+            });
+            return fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: body.toString()
+            });
+        }
+
+        function markAllRead() {
+            postForm('/Notifications/MarkAllRead', {}).then(function () {
+                badge.classList.remove('visible');
+            }).catch(function () { });
+        }
+
+        function loadPanel() {
+            return fetch('/Notifications/Recent')
+                .then(function (r) { return r.text(); })
+                .then(function (html) {
+                    panel.innerHTML = html;
+                    panel.classList.add('open');
+                    markAllRead();
+                });
+        }
+
+        bellTrigger.addEventListener('click', function (ev) {
+            ev.stopPropagation();
+            var isOpen = panel.classList.contains('open');
+            if (isOpen) {
+                panel.classList.remove('open');
+                return;
+            }
+
+            window.closeProfileMenu && window.closeProfileMenu();
+            loadPanel().catch(function () { });
+        });
+
+        panel.addEventListener('click', function (ev) {
+            var trigger = ev.target.closest('.notification-reply-trigger');
+            if (!trigger) {
+                return;
+            }
+            var form = panel.querySelector('.notification-reply-form[data-message-id="' + trigger.dataset.messageId + '"]');
+            if (form) {
+                form.style.display = form.style.display === 'none' ? '' : 'none';
+            }
+        });
+
+        panel.addEventListener('submit', function (ev) {
+            var form = ev.target.closest('.notification-reply-form');
+            if (!form) {
+                return;
+            }
+            ev.preventDefault();
+            var textarea = form.querySelector('textarea[name="body"]');
+            var body = textarea ? textarea.value.trim() : '';
+            if (!body) {
+                return;
+            }
+
+            postForm('/Notifications/Reply', { messageId: form.dataset.messageId, body: body })
+                .then(function () { return loadPanel(); })
+                .catch(function () { });
+        });
+
+        document.addEventListener('click', function (ev) {
+            if (!panel.contains(ev.target) && ev.target !== bellTrigger) {
+                panel.classList.remove('open');
+            }
+        });
+
+        window.closeNotificationPanel = function () {
+            panel.classList.remove('open');
+        };
+
+        refreshUnreadCount();
+        setInterval(refreshUnreadCount, 30000);
+    })();
+</script>

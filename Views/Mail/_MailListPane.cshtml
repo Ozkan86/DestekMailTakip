@@ -1,0 +1,224 @@
+@model MailIndexViewModel
+@{
+    // Index.cshtml'deki "mail-list-pane" icerigiyle ayni; hem ilk sayfa
+    // yuklemesinde Index.cshtml tarafindan hem de "Sadece Benim" filtresi AJAX
+    // ile degistiginde MailController.Index'in AJAX dalindan (bkz. IsAjaxRequest)
+    // dogrudan bu partial olarak donuluyor. Bu yuzden Index.cshtml'in ust
+    // @{ } blogundaki isAssignedFolder/usesTaskRowDesign gibi degiskenlere
+    // guvenmek yerine burada kendi basina hesaplaniyor.
+    var isAssignedFolder = Model.Folder == MailFolders.Assigned;
+    var usesTaskRowDesign = !isAssignedFolder && Model.Folder != MailFolders.Drafts;
+
+    string SnippetOf(string? bodyText)
+    {
+        if (string.IsNullOrWhiteSpace(bodyText))
+        {
+            return string.Empty;
+        }
+
+        var flattened = string.Join(" ", bodyText.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries)).Trim();
+        return flattened.Length > 90 ? flattened[..90] + "…" : flattened;
+    }
+}
+
+@{
+    // Okundu/okunmadi filtreleri satir tasarimini kullanan klasorlerde anlamli
+    // (Taslaklar duz liste kullandigi icin disarida). Filtrenin kendisi istemci
+    // tarafinda calisir; bkz. Index.cshtml -> applyReadFilter.
+    var showReadFilters = (isAssignedFolder || usesTaskRowDesign) && Model.Mails.Any();
+    // Gomulu bolumlerde ("İstatistiklerim" sayfasi) gosterilmez: orada liste
+    // zaten sabit bir kapsamla acilir, filtre kullaniciyi yaniltirdi.
+    var showOnlyMineToggle = !Model.Embedded
+        && (Model.Folder == MailFolders.Closed || Model.Folder == MailFolders.Sent);
+
+    // Chip'lerdeki sayilar. Ilk deger sunucudan gelir; mail acilinca okunmadi
+    // isareti sunucuya gitmeden kalktigi icin (bkz. Index.cshtml ->
+    // setActiveMailListItem) sayilar istemci tarafinda da tazelenir.
+    var readCount = Model.Mails.Count(m => m.IsRead);
+    var unreadCount = Model.Mails.Count - readCount;
+
+    // "Sadece Benim" iki klasorde farkli anlama gelir (bkz. BuildFolderWhereClause):
+    // Kapatilmis'ta gorev sizin uzerinizde, Gonderilenler'de yaniti siz gonderdiniz.
+    var onlyMineTitle = Model.Folder == MailFolders.Closed
+        ? (Model.OnlyMine ? "Kapatılmış tüm görevleri göster" : "Sadece sizin üzerinizdeki görevleri göster")
+        : (Model.OnlyMine ? "Herkesin gönderdiği yanıtları göster" : "Sadece sizin gönderdiğiniz yanıtları göster");
+}
+
+@if (showReadFilters || showOnlyMineToggle)
+{
+    <div class="mail-list-header mail-list-header-slim mail-list-header-filters">
+        @if (showReadFilters)
+        {
+            <button type="button" class="btn-chip mail-list-read-filter" data-read-filter="read" title="Sadece okunan mailleri göster">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M21.2 8.4c.5.38.8.97.8 1.6v10a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V10a2 2 0 0 1 .8-1.6l8-6a2 2 0 0 1 2.4 0z" /><path d="m22 10-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 10" /></svg>
+                Okunanlar
+                <span class="mail-list-filter-count" data-read-count="read">(@readCount)</span>
+            </button>
+            <button type="button" class="btn-chip mail-list-read-filter" data-read-filter="unread" title="Sadece okunmayan mailleri göster">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2" /><polyline points="22 6 12 13 2 6" /></svg>
+                Okunmayanlar
+                <span class="mail-list-filter-count" data-read-count="unread">(@unreadCount)</span>
+            </button>
+        }
+
+        @if (showOnlyMineToggle)
+        {
+            <a class="btn-chip mail-list-filter-toggle @(Model.OnlyMine ? "btn-chip-primary" : "")"
+               title="@onlyMineTitle"
+               asp-action="Index" asp-route-folder="@Model.Folder" asp-route-onlyMine="@(!Model.OnlyMine)">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>
+                Sadece Benim
+            </a>
+        }
+    </div>
+}
+
+@if (Model.Folder == MailFolders.Drafts)
+{
+    <div class="draft-template-panel">
+        @if (TempData["TemplateMessage"] is string templateMessage)
+        {
+            <div class="alert alert-success">@templateMessage</div>
+        }
+        <div class="draft-template-panel-header">
+            <span>Taslak Şablonları</span>
+            <button type="button" id="newTemplateToggle" class="btn-chip btn-chip-primary">+ Yeni Taslak</button>
+        </div>
+
+        <form id="newTemplateForm" asp-action="CreateDraftTemplate" method="post" class="draft-template-form" style="display:none;">
+            <input type="text" name="title" placeholder="Başlık" maxlength="200" required class="draft-template-input" />
+            <textarea name="body" rows="3" placeholder="Taslak içeriği..." required class="draft-template-textarea"></textarea>
+            <label class="draft-template-private-check">
+                <input type="checkbox" name="isPrivate" value="true" />
+                Sadece ben görebileyim
+            </label>
+            <div class="draft-template-form-actions">
+                <button type="submit" class="btn-chip btn-chip-primary">Kaydet</button>
+                <button type="button" id="newTemplateCancel" class="btn-chip">Vazgeç</button>
+            </div>
+        </form>
+
+        @if (!Model.DraftTemplates.Any())
+        {
+            <p class="text-muted draft-template-empty">Henüz taslak şablonu yok.</p>
+        }
+        else
+        {
+            <ul class="draft-template-list">
+                @foreach (var template in Model.DraftTemplates)
+                {
+                    <li class="draft-template-item">
+                        <details>
+                            <summary>
+                                <span class="draft-template-item-title">
+                                    @template.Title
+                                    @if (template.IsPrivate)
+                                    {
+                                        <span class="draft-template-private-badge" title="Sadece sizde görünür">Özel</span>
+                                    }
+                                </span>
+                                <button type="button" class="icon-btn icon-btn-danger draft-template-delete-trigger" title="Taslağı sil">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18" /><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" /><line x1="10" y1="11" x2="10" y2="17" /><line x1="14" y1="11" x2="14" y2="17" /></svg>
+                                </button>
+                            </summary>
+                            <form asp-action="DeleteDraftTemplate" asp-route-id="@template.Id" method="post" class="draft-template-delete-form"></form>
+                            <form asp-action="UpdateDraftTemplate" asp-route-id="@template.Id" method="post" class="draft-template-form">
+                                <input type="text" name="title" value="@template.Title" maxlength="200" required class="draft-template-input" />
+                                <textarea name="body" rows="3" required class="draft-template-textarea">@template.Body</textarea>
+                                @if (template.IsPrivate)
+                                {
+                                    <label class="draft-template-private-check">
+                                        <input type="checkbox" name="isPrivate" value="true" checked="checked" />
+                                        Sadece ben görebileyim
+                                    </label>
+                                }
+                                <div class="draft-template-form-actions">
+                                    <button type="submit" class="btn-chip btn-chip-primary">Güncelle</button>
+                                </div>
+                            </form>
+                        </details>
+                    </li>
+                }
+            </ul>
+        }
+    </div>
+}
+
+@if (!Model.Mails.Any())
+{
+    <p class="text-muted p-3 mb-0">Bu klasörde mail yok.</p>
+}
+else if (isAssignedFolder)
+{
+    <partial name="_AssignedTaskGroups" model="Model" />
+}
+else if (usesTaskRowDesign)
+{
+    @foreach (var mail in Model.Mails)
+    {
+        <partial name="_TaskRow" model="(mail, Model.SelectedId, Model.Folder)" />
+    }
+}
+else
+{
+    @foreach (var mail in Model.Mails)
+    {
+        var isActive = mail.Id == Model.SelectedId;
+        var itemClasses = "mail-list-item" + (mail.IsRead ? "" : " unread") + (isActive ? " active" : "");
+        var senderLabel = string.IsNullOrEmpty(mail.FromName) ? mail.FromAddress : mail.FromName;
+        // Liste satirindaki gonderen bir musteri (dis e-posta adresi); rengi
+        // adresten turetilir. Muhendis rozetleri her yerde kullaniciya atanmis
+        // kalici renkten gelir (bkz. IUserAvatarColorService).
+        var senderColor = AvatarPalette.ColorForSeed(mail.FromAddress);
+
+        <div class="mail-list-item-wrap">
+            <a class="@itemClasses" data-mail-id="@mail.Id" target="mailFrame" href="@Url.Action("DetailFrame", new { id = mail.Id, folder = Model.Folder })">
+                <span class="avatar-circle" style="background:@senderColor">@AvatarHelper.Initials(mail.FromName, mail.FromAddress)</span>
+                <span class="mail-item-body">
+                    <span class="mail-item-top">
+                        <span class="mail-item-sender">@senderLabel</span>
+                        <span class="mail-item-date">@mail.ReceivedAt.ToLocalTime().ToString("dd.MM HH:mm")</span>
+                    </span>
+                    <span class="mail-item-subject-row">
+                        @if (mail.FlagType != MailFlagTypes.Active)
+                        {
+                            <span class="flag-dot flag-dot-@mail.FlagType" title="@MailFlagTypes.All.First(f => f.Key == mail.FlagType).Label"></span>
+                        }
+                        @if (mail.Attachments.Any())
+                        {
+                            <span class="mail-attachment-icon" title="Ek var">&#128206;</span>
+                        }
+                        <span class="mail-item-subject">@mail.Subject</span>
+                    </span>
+                    @{
+                        var snippet = SnippetOf(mail.BodyText);
+                    }
+                    @if (!string.IsNullOrEmpty(snippet))
+                    {
+                        <span class="mail-item-snippet">@snippet</span>
+                    }
+                    @if (mail.IsAssigned || mail.HasDraft)
+                    {
+                        <span class="mail-item-meta">
+                            @if (mail.IsAssigned)
+                            {
+                                <span class="mail-item-assigned">&rarr; @string.Join(", ", mail.AssignedUsers.Select(a => a.DisplayName))</span>
+                            }
+                            @if (mail.HasDraft)
+                            {
+                                <span class="mail-item-draft-tag">Taslak</span>
+                            }
+                        </span>
+                    }
+                </span>
+            </a>
+            @if (mail.HasDraft)
+            {
+                <button type="button" class="mail-item-draft-delete" title="Taslağı sil (maili silmez)"
+                        data-url="@Url.Action("ClearMailDraft", new { id = mail.Id, folder = Model.Folder })">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18" /><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" /><line x1="10" y1="11" x2="10" y2="17" /><line x1="14" y1="11" x2="14" y2="17" /></svg>
+                </button>
+            }
+        </div>
+    }
+}

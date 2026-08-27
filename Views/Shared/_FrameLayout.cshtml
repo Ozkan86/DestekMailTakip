@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"]</title>
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/mail.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/emoji-picker.css" asp-append-version="true" />
+    @* Pano kartlarini gomulu gosteren cerceveler (bkz. Board/MyTasks.cshtml)
+       icin; mail onizleme cercevesi bu dosyayi bosuna yuklemesin diye kosullu. *@
+    @if (ViewData["FrameIncludeBoardCss"] is true)
+    {
+        <link rel="stylesheet" href="~/css/board.css" asp-append-version="true" />
+    }
+    <link rel="stylesheet" href="~/css/ui-dialog.css" asp-append-version="true" />
+    <style>
+        body {
+            padding: 0;
+            background: #fff;
+        }
+    </style>
+</head>
+<body>
+    @RenderBody()
+
+    <script src="~/lib/jquery/dist/jquery.min.js"></script>
+    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    @* Bu cerceve (mail onizleme iframe'i) icindeki onaylar, ayni kaynakli ust
+       pencerede acilir; bkz. ui-dialog.js -> hostWindow(). *@
+    <script src="~/js/ui-dialog.js" asp-append-version="true"></script>
+    <script src="~/js/emoji-data.js" asp-append-version="true"></script>
+    <script src="~/js/emoji-picker.js" asp-append-version="true"></script>
+    <script src="~/js/draft-template-picker.js" asp-append-version="true"></script>
+    <script src="~/js/mail-annotation.js" asp-append-version="true"></script>
+    <script src="~/js/mail-attachments.js" asp-append-version="true"></script>
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

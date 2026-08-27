@@ -1,0 +1,785 @@
+@using Microsoft.AspNetCore.Identity
+@model MailMessageModel
+@inject UserManager<ApplicationUser> UserManager
+@inject IUserAvatarColorService AvatarColors
+@{
+    var galleryModalId = $"attachmentGalleryModal{Model.Id}";
+    var isFrame = ViewData["IsFrame"] as bool? ?? false;
+    var folder = ViewData["Folder"] as string ?? MailFolders.Unassigned;
+    var returnTo = isFrame ? "frame" : "full";
+    var senderLabel = string.IsNullOrEmpty(Model.FromName) ? Model.FromAddress : Model.FromName;
+    var draftTemplates = ViewData["DraftTemplates"] as List<MailDraftTemplate> ?? new List<MailDraftTemplate>();
+
+    // Konusma akisindaki muhendis renkleri, uygulamanin her yerinde oldugu gibi
+    // kullaniciya kalici olarak atanmis tekil renk indeksinden gelir
+    // (IUserAvatarColorService). Musteriler icin hesap olmayabildiginden renk
+    // e-posta adresinden turetilir.
+    string CustomerColor(string? address) => AvatarPalette.ColorForSeed(address ?? Model.FromAddress);
+
+    var senderColor = CustomerColor(Model.FromAddress);
+
+    var currentUserId = UserManager.GetUserId(User);
+    var isAssignedToMe = Model.AssignedUsers.Any(a => a.UserId == currentUserId);
+    var assignableEmployees = (await UserManager.GetUsersInRoleAsync("Employee"))
+        .Where(e => !Model.AssignedUsers.Any(a => a.UserId == e.Id))
+        .OrderBy(e => e.DisplayName)
+        .ToList();
+    var userFolders = ViewData["UserFolders"] as List<MailUserFolder> ?? new List<MailUserFolder>();
+
+    // Bayrak kurallari (bkz. MailFlagPolicy): atanmamis mail "Tamamlandi" olamaz,
+    // gorev ustunde olmayan muhendis "Beklemede/Tamamlandi/Spam" isaretleyemez.
+    var hasAssignment = Model.AssignedUsers.Any();
+
+    // "Bayragi sadece koyan degistirebilir" kilidi yalnizca gorev baskasinin
+    // ustundeyken calisir; ayni goreve atanmis muhendisler birbirinin bayragini
+    // degistirebilir, atanmamis mailde ise kimse bayragin sahibi sayilmaz.
+    var flagLocked = MailFlagPolicy.IsOwnerLockActive(Model.FlagSetByUserId, currentUserId, hasAssignment, isAssignedToMe);
+    var flagOwnerLabel = Model.FlagSetByDisplayName;
+    string? FlagDenyReason(string flagType) =>
+        MailFlagPolicy.DenyReason(flagType, hasAssignment, isAssignedToMe);
+
+    var detailAction = isFrame ? "DetailFrame" : "Details";
+    var previousMailId = ViewData["PreviousMailId"] as int?;
+    var nextMailId = ViewData["NextMailId"] as int?;
+
+    var detailTitle = !string.IsNullOrWhiteSpace(Model.TaskName) ? Model.TaskName : Model.Subject;
+    var flagLabel = MailFlagTypes.All.First(f => f.Key == Model.FlagType).Label;
+
+    // ---- Ek galerisi ----
+    // Konusmadaki TUM resim ekleri (musterinin ilk maili + her yanit) tek bir
+    // galeride toplanir; boylece ust bardaki resim ikonu ekleri tek tek degil
+    // hepsini gezilebilir sekilde acar. WebPath dosya adinda GUID tasidigi icin
+    // galerideki sirayi bulmakta anahtar olarak kullanilabiliyor.
+    var galleryItems = new List<(string WebPath, string FileName, string Owner, DateTimeOffset At)>();
+    foreach (var image in Model.ImageAttachments)
+    {
+        galleryItems.Add((image.WebPath, image.FileName, senderLabel ?? string.Empty, Model.ReceivedAt));
+    }
+    foreach (var reply in Model.Replies)
+    {
+        foreach (var image in reply.Attachments.Where(a => a.IsImage))
+        {
+            galleryItems.Add((image.WebPath, image.FileName, reply.SentByDisplayName, reply.SentAt));
+        }
+    }
+
+    var galleryIndexByPath = new Dictionary<string, int>(StringComparer.Ordinal);
+    for (var i = 0; i < galleryItems.Count; i++)
+    {
+        galleryIndexByPath[galleryItems[i].WebPath] = i;
+    }
+    int GalleryIndexOf(string webPath) => galleryIndexByPath.TryGetValue(webPath, out var idx) ? idx : 0;
+}
+
+@if (TempData["FlagError"] is string flagError)
+{
+    <div class="alert alert-warning">@flagError</div>
+}
+
+@if (TempData["ReplyError"] is string replyError)
+{
+    <div class="alert alert-danger">@replyError</div>
+}
+
+@if (TempData["ReplySuccess"] is string replySuccess)
+{
+    <div class="alert alert-success">@replySuccess</div>
+}
+
+<div class="card mail-detail-card">
+    <div class="detail-action-bar mail-detail-topbar">
+        <div class="detail-toolbar">
+            <button type="button" id="annotationPenTrigger-@Model.Id" class="icon-btn annotation-tool" data-tool="pen" title="Kalem">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" /></svg>
+            </button>
+            <button type="button" id="annotationMarkerTrigger-@Model.Id" class="icon-btn annotation-tool" data-tool="marker" title="Üstünü çiz / işaretle">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l6-6 4 4 8-8" /><path d="M14 6l4 4" /><path d="M2 21h20" /></svg>
+            </button>
+            <span class="detail-toolbar-sep"></span>
+            <button type="button" id="annotationUndo-@Model.Id" class="icon-btn" title="Geri al">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10" /><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10" /></svg>
+            </button>
+            <button type="button" id="annotationClear-@Model.Id" class="icon-btn icon-btn-danger" title="Tümünü temizle">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18" /><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" /></svg>
+            </button>
+
+            @* -------- Insan ikonu: atama -------- *@
+            <div class="detail-dropdown">
+                <button type="button" class="icon-btn detail-dropdown-trigger" data-dropdown-trigger title="Atama">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="8.5" cy="7" r="4" /><polyline points="17 11 19 13 23 9" /></svg>
+                    <svg class="detail-dropdown-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9" /></svg>
+                </button>
+                <div class="detail-dropdown-panel" data-dropdown-panel>
+                    @if (Model.AssignedUsers.Any())
+                    {
+                        <div class="detail-dropdown-section-label">Atananlar</div>
+                        @foreach (var assignee in Model.AssignedUsers)
+                        {
+                            <div class="detail-assignee-row">
+                                <span class="avatar-circle avatar-sm" style="background:@AvatarColors.ColorFor(assignee.UserId, assignee.DisplayName)">@AvatarHelper.Initials(assignee.DisplayName, assignee.DisplayName)</span>
+                                <span class="detail-assignee-name">@assignee.DisplayName</span>
+                                <form asp-action="RemoveAssignedUser" method="post" class="d-inline">
+                                    <input type="hidden" name="id" value="@Model.Id" />
+                                    <input type="hidden" name="userId" value="@assignee.UserId" />
+                                    <input type="hidden" name="returnTo" value="@returnTo" />
+                                    <input type="hidden" name="folder" value="@folder" />
+                                    <button type="submit" class="icon-btn icon-btn-sm" title="Atamayı kaldır">&times;</button>
+                                </form>
+                            </div>
+                        }
+                        <div class="detail-dropdown-divider"></div>
+                    }
+
+                    @if (!isAssignedToMe)
+                    {
+                        <form asp-action="AssignUser" method="post" class="detail-dropdown-form">
+                            <input type="hidden" name="id" value="@Model.Id" />
+                            <input type="hidden" name="userId" value="@currentUserId" />
+                            <input type="hidden" name="returnTo" value="@returnTo" />
+                            <input type="hidden" name="folder" value="@folder" />
+                            <input type="text" name="taskName" class="task-name-input" placeholder="Görev adı (opsiyonel)" maxlength="200" />
+                            <button type="submit" class="detail-dropdown-item detail-dropdown-item-action">
+                                <span class="detail-dropdown-item-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="8.5" cy="7" r="4" /><polyline points="17 11 19 13 23 9" /></svg></span>
+                                Kendine Ata
+                            </button>
+                        </form>
+                    }
+
+                    @if (assignableEmployees.Any())
+                    {
+                        <form asp-action="AssignUser" method="post" class="detail-dropdown-form">
+                            <input type="hidden" name="id" value="@Model.Id" />
+                            <input type="hidden" name="returnTo" value="@returnTo" />
+                            <input type="hidden" name="folder" value="@folder" />
+                            <div class="detail-assign-employee-list">
+                                @foreach (var employee in assignableEmployees)
+                                {
+                                    <label class="admin-assign-employee-check">
+                                        <input type="checkbox" name="userId" value="@employee.Id" />
+                                        @employee.DisplayName
+                                    </label>
+                                }
+                            </div>
+                            <input type="text" name="taskName" class="task-name-input" placeholder="Görev adı (opsiyonel)" maxlength="200" />
+                            <button type="submit" class="detail-dropdown-item detail-dropdown-item-action">
+                                <span class="detail-dropdown-item-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" /></svg></span>
+                                Ekip Üyelerine Ata
+                            </button>
+                        </form>
+                    }
+                </div>
+            </div>
+
+            @* -------- Bayrak ikonu -------- *@
+            <div class="detail-dropdown">
+                <button type="button" class="icon-btn detail-dropdown-trigger" data-dropdown-trigger title="Bayrak">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z" /><line x1="4" y1="22" x2="4" y2="15" /></svg>
+                    <svg class="detail-dropdown-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9" /></svg>
+                </button>
+                <div class="detail-dropdown-panel" data-dropdown-panel>
+                    @if (flagLocked)
+                    {
+                        <div class="detail-dropdown-lock-note">Bu bayrağı @(flagOwnerLabel ?? "başka bir kullanıcı") koydu; yalnızca görevin atandığı mühendisler değiştirebilir.</div>
+                        @* Metin MailFlagPolicy.OwnerLockMessage ile ayni; burada bayragi
+                           koyan kisinin adi da gosterilebildigi icin ayrica yaziliyor. *@
+                    }
+                    @foreach (var (key, label) in MailFlagTypes.All)
+                    {
+                        var isCurrent = Model.FlagType == key;
+                        var denyReason = FlagDenyReason(key);
+                        <form asp-action="SetFlag" method="post"
+                              class="detail-dropdown-form @(denyReason is not null ? "detail-dropdown-item-lock" : "")"
+                              data-lock-tip="@denyReason">
+                            <input type="hidden" name="id" value="@Model.Id" />
+                            <input type="hidden" name="flagType" value="@key" />
+                            <input type="hidden" name="returnTo" value="@returnTo" />
+                            <input type="hidden" name="folder" value="@folder" />
+                            <button type="submit" class="detail-dropdown-item @(isCurrent ? "detail-dropdown-item-current" : "")" disabled="@(flagLocked || denyReason is not null ? "disabled" : null)">
+                                <span class="detail-dropdown-item-icon"><span class="flag-dot flag-dot-@key"></span></span>
+                                @label
+                                @if (isCurrent)
+                                {
+                                    <svg class="detail-dropdown-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
+                                }
+                            </button>
+                        </form>
+                    }
+                </div>
+            </div>
+
+            @* -------- Etiket ikonu: kategori belirteci + tag -------- *@
+            <div class="detail-dropdown">
+                <button type="button" class="icon-btn detail-dropdown-trigger" data-dropdown-trigger title="Etiket">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41 11 3H4v7l9.59 9.59a2 2 0 0 0 2.82 0l4.18-4.18a2 2 0 0 0 0-2.82z" /><circle cx="7.5" cy="7.5" r="1.5" /></svg>
+                    <svg class="detail-dropdown-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9" /></svg>
+                </button>
+                <div class="detail-dropdown-panel detail-dropdown-panel-wide" data-dropdown-panel>
+                    <div class="detail-tag-tabs">
+                        <button type="button" class="detail-tag-tab active" data-tag-tab="marker">Belirteç Ekle</button>
+                        <button type="button" class="detail-tag-tab" data-tag-tab="tags">Tag Ekle</button>
+                    </div>
+
+                    <div class="detail-tag-panel" data-tag-panel="marker">
+                        <form asp-action="SetCategoryMarker" method="post" class="detail-marker-form">
+                            <input type="hidden" name="id" value="@Model.Id" />
+                            <input type="hidden" name="returnTo" value="@returnTo" />
+                            <input type="hidden" name="folder" value="@folder" />
+                            <div class="detail-marker-swatches">
+                                @foreach (var (key, label, color) in TagPalette.All)
+                                {
+                                    <button type="submit" name="colorKey" value="@key" class="detail-marker-swatch @(Model.CategoryColorKey == key ? "selected" : "")" style="background:@color;" title="@label"></button>
+                                }
+                                <button type="submit" name="colorKey" value="" class="detail-marker-swatch detail-marker-swatch-none" title="Belirteç yok">&times;</button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <div class="detail-tag-panel" data-tag-panel="tags" style="display:none;">
+                        <form asp-action="SetTags" method="post" id="tagsForm-@Model.Id">
+                            <input type="hidden" name="id" value="@Model.Id" />
+                            <input type="hidden" name="returnTo" value="@returnTo" />
+                            <input type="hidden" name="folder" value="@folder" />
+                            <div id="tagsHiddenInputs-@Model.Id"></div>
+
+                            <div class="detail-tag-builder-swatches" id="tagBuilderSwatches-@Model.Id">
+                                @foreach (var (key, label, color) in TagPalette.All)
+                                {
+                                    <button type="button" class="detail-marker-swatch detail-tag-builder-swatch @(key == "gray" ? "selected" : "")" data-color-key="@key" style="background:@color;" title="@label"></button>
+                                }
+                            </div>
+                            <div class="detail-tag-builder-row">
+                                <input type="text" id="tagBuilderText-@Model.Id" class="task-name-input" placeholder="Etiket metni" maxlength="60" />
+                                <button type="button" class="btn-chip" id="tagBuilderAdd-@Model.Id">Ekle</button>
+                            </div>
+                            <div class="detail-tag-builder-list" id="tagBuilderList-@Model.Id"></div>
+
+                            <button type="submit" class="btn-chip btn-chip-primary detail-tag-builder-save">Kaydet</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            @* -------- Yildirim ikonu: simdilik islevsiz -------- *@
+            <button type="button" class="icon-btn" title="Yakında">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" /></svg>
+            </button>
+
+            @* -------- Uc nokta: diger islemler -------- *@
+            <div class="detail-dropdown detail-dropdown-panel-align-right">
+                <button type="button" class="icon-btn detail-dropdown-trigger" data-dropdown-trigger title="Diğer">
+                    <svg viewBox="0 0 24 24" fill="currentColor" stroke="none"><circle cx="5" cy="12" r="2" /><circle cx="12" cy="12" r="2" /><circle cx="19" cy="12" r="2" /></svg>
+                </button>
+                <div class="detail-dropdown-panel" data-dropdown-panel>
+                    <details class="admin-assign-panel">
+                        <summary class="detail-dropdown-item">
+                            <span class="detail-dropdown-item-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7v13h18V7" /><path d="M1 3h22v4H1z" /></svg></span>
+                            Klasöre Ekle
+                        </summary>
+                        <form asp-action="UpdateMailFolders" method="post" class="admin-assign-form">
+                            <input type="hidden" name="id" value="@Model.Id" />
+                            <input type="hidden" name="returnTo" value="@returnTo" />
+                            <input type="hidden" name="folder" value="@folder" />
+                            @if (!userFolders.Any())
+                            {
+                                <span class="text-muted">Henüz klasörünüz yok. Soldaki menüden "+" ile klasör oluşturun.</span>
+                            }
+                            @foreach (var userFolder in userFolders)
+                            {
+                                <label class="admin-assign-employee-check">
+                                    <input type="checkbox" name="folderIds" value="@userFolder.Id" checked="@(Model.FolderIds.Contains(userFolder.Id) ? "checked" : null)" />
+                                    @userFolder.Name
+                                </label>
+                            }
+                            <button type="submit" class="btn-chip btn-chip-primary">Kaydet</button>
+                        </form>
+                    </details>
+
+                    <form asp-action="DeleteMail" method="post"
+                          data-ui-confirm-title="Maili sil"
+                          data-ui-confirm="Bu mail kalıcı olarak silinecek. Bu işlem geri alınamaz."
+                          data-ui-confirm-ok="Sil"
+                          data-ui-confirm-tone="danger">
+                        <input type="hidden" name="id" value="@Model.Id" />
+                        <input type="hidden" name="returnTo" value="@returnTo" />
+                        <input type="hidden" name="folder" value="@folder" />
+                        <button type="submit" class="detail-dropdown-item detail-dropdown-item-danger">
+                            <span class="detail-dropdown-item-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18" /><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" /><line x1="10" y1="11" x2="10" y2="17" /><line x1="14" y1="11" x2="14" y2="17" /></svg></span>
+                            Sil
+                        </button>
+                    </form>
+
+                    <button type="button" class="detail-dropdown-item" disabled title="Yakında">
+                        <span class="detail-dropdown-item-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2" /><circle cx="9" cy="10" r="2" /><path d="M15 8h2" /><path d="M15 12h2" /><path d="M7 16h10" /></svg></span>
+                        Müşteri Profilini Görüntüle
+                    </button>
+
+                    @{
+                        var spamTargetFlag = Model.FlagType == MailFlagTypes.Spam ? MailFlagTypes.Active : MailFlagTypes.Spam;
+                        var spamDenyReason = FlagDenyReason(spamTargetFlag);
+                    }
+                    <form asp-action="SetFlag" method="post"
+                          class="@(spamDenyReason is not null ? "detail-dropdown-item-lock" : "")"
+                          data-lock-tip="@spamDenyReason">
+                        <input type="hidden" name="id" value="@Model.Id" />
+                        <input type="hidden" name="flagType" value="@spamTargetFlag" />
+                        <input type="hidden" name="returnTo" value="@returnTo" />
+                        <input type="hidden" name="folder" value="@folder" />
+                        <button type="submit" class="detail-dropdown-item" disabled="@(flagLocked || spamDenyReason is not null ? "disabled" : null)">
+                            <span class="detail-dropdown-item-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><polygon points="7.86 2 16.14 2 22 7.86 22 16.14 16.14 22 7.86 22 2 16.14 2 7.86 7.86 2" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" /></svg></span>
+                            @(Model.FlagType == MailFlagTypes.Spam ? "Spam Değil" : "Spam Olarak İşaretle")
+                        </button>
+                    </form>
+
+                    <form asp-action="ToggleArchive" method="post">
+                        <input type="hidden" name="id" value="@Model.Id" />
+                        <input type="hidden" name="returnTo" value="@returnTo" />
+                        <input type="hidden" name="folder" value="@folder" />
+                        <button type="submit" class="detail-dropdown-item">
+                            <span class="detail-dropdown-item-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8v13H3V8" /><path d="M1 3h22v5H1z" /><path d="M10 12h4" /></svg></span>
+                            @(Model.IsArchived ? "Arşivden Çıkar" : "Arşivle")
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        @* -------- Onceki / sonraki mail -------- *@
+        <div class="detail-nav-group">
+            @if (previousMailId is int prevId)
+            {
+                <a class="icon-btn" href="@Url.Action(detailAction, new { id = prevId, folder })" title="Önceki mail">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6" /></svg>
+                </a>
+            }
+            else
+            {
+                <span class="icon-btn detail-nav-disabled" title="Önceki mail yok">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6" /></svg>
+                </span>
+            }
+            @if (nextMailId is int nextId)
+            {
+                <a class="icon-btn" href="@Url.Action(detailAction, new { id = nextId, folder })" title="Sonraki mail">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6" /></svg>
+                </a>
+            }
+            else
+            {
+                <span class="icon-btn detail-nav-disabled" title="Sonraki mail yok">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6" /></svg>
+                </span>
+            }
+        </div>
+    </div>
+
+    <div class="mail-detail-subheader">
+        <div class="mail-detail-subheader-left">
+            <span class="mail-detail-title">@detailTitle</span>
+            @if (Model.Tags.Any())
+            {
+                <span class="mail-detail-tags">
+                    @foreach (var tag in Model.Tags)
+                    {
+                        <form asp-action="SetTags" method="post" class="mail-detail-tag-form">
+                            <input type="hidden" name="id" value="@Model.Id" />
+                            <input type="hidden" name="returnTo" value="@returnTo" />
+                            <input type="hidden" name="folder" value="@folder" />
+                            @foreach (var other in Model.Tags.Where(t => t.Id != tag.Id))
+                            {
+                                <input type="hidden" name="tagTexts" value="@other.Text" />
+                                <input type="hidden" name="tagColors" value="@other.ColorKey" />
+                            }
+                            <span class="task-tag-chip tag-chip-@tag.ColorKey mail-detail-tag-chip">
+                                @tag.Text
+                                <button type="submit" class="mail-detail-tag-remove" title="Etiketi kaldır">&times;</button>
+                            </span>
+                        </form>
+                    }
+                </span>
+            }
+        </div>
+        <div class="mail-detail-subheader-right">
+            @if (galleryItems.Count > 0)
+            {
+                <button type="button" class="icon-btn mail-detail-attachments-trigger"
+                        data-gallery-open="0" data-gallery-target="@galleryModalId"
+                        title="@(galleryItems.Count) eki görüntüle">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" /><circle cx="8.5" cy="8.5" r="1.5" /><path d="M21 15l-5-5L5 21" /></svg>
+                    <span class="mail-detail-attachments-badge">@galleryItems.Count</span>
+                </button>
+            }
+            <span class="mail-detail-date">@Model.ReceivedAt.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</span>
+            <span class="status-badge mail-detail-flag-badge status-badge-@Model.FlagType">@flagLabel</span>
+        </div>
+    </div>
+
+    @if (galleryItems.Count > 0)
+    {
+        @* Ek galerisi: koyu zeminli buyuk onizleme + kucuk resim seridi. Onceki
+           carousel'de oklar acik zemin uzerinde beyaz oldugu icin gorunmuyordu ve
+           birden fazla ek oldugu fark edilmiyordu; artik sayac, seritte tum ekler
+           ve klavye oklari var (bkz. wwwroot/js/mail-attachments.js). *@
+        <div class="modal fade attachment-gallery-modal" id="@galleryModalId" tabindex="-1" aria-hidden="true" data-attachment-gallery>
+            <div class="modal-dialog modal-xl modal-dialog-centered">
+                <div class="modal-content">
+                    <div class="modal-header attachment-gallery-header">
+                        <h6 class="modal-title">Ekler <span class="attachment-gallery-total">@galleryItems.Count</span></h6>
+                        <div class="attachment-gallery-header-actions">
+                            <span class="attachment-gallery-position" data-gallery-position></span>
+                            <a class="btn-chip" data-gallery-download href="#" target="_blank" rel="noopener" download>İndir</a>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Kapat"></button>
+                        </div>
+                    </div>
+                    <div class="modal-body attachment-gallery-body">
+                        <div class="attachment-gallery-stage">
+                            <button type="button" class="attachment-gallery-nav attachment-gallery-prev" data-gallery-prev title="Önceki ek (←)">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6" /></svg>
+                            </button>
+                            <img class="attachment-gallery-image" data-gallery-image src="@galleryItems[0].WebPath" alt="@galleryItems[0].FileName" />
+                            <button type="button" class="attachment-gallery-nav attachment-gallery-next" data-gallery-next title="Sonraki ek (→)">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6" /></svg>
+                            </button>
+                        </div>
+                        <div class="attachment-gallery-meta">
+                            <span class="attachment-gallery-name" data-gallery-name>@galleryItems[0].FileName</span>
+                            <span class="attachment-gallery-owner" data-gallery-owner>@galleryItems[0].Owner</span>
+                        </div>
+                        <div class="attachment-gallery-thumbs" data-gallery-thumbs>
+                            @for (var i = 0; i < galleryItems.Count; i++)
+                            {
+                                var item = galleryItems[i];
+                                <button type="button" class="attachment-gallery-thumb @(i == 0 ? "is-active" : "")"
+                                        data-gallery-thumb="@i"
+                                        data-gallery-src="@item.WebPath"
+                                        data-gallery-filename="@item.FileName"
+                                        data-gallery-owner-name="@item.Owner"
+                                        title="@item.FileName">
+                                    <img src="@item.WebPath" alt="@item.FileName" loading="lazy" />
+                                </button>
+                            }
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+
+    <div class="card-body p-0">
+        @* Tum konusma zinciri (musterinin ilk maili + tum yanitlar) tek bir surekli
+           akis (Helpscout benzeri) olarak gosterilir; her katilimci kendi renginde
+           sol kenarlikla ayirt edilir. Cizim canvas'i bu sarmalayicinin tamamini
+           kaplar, boylece yanitlar uzerinde de isaretleme yapilabilir. *@
+        <div id="annotationWrap-@Model.Id" class="mail-conversation-wrap">
+            <div class="reply-item" style="border-left-color:@senderColor">
+                <span class="avatar-circle avatar-sm" style="background:@senderColor">@AvatarHelper.Initials(Model.FromName, Model.FromAddress)</span>
+                <div class="reply-item-body">
+                    <div class="reply-item-top">
+                        <strong>@senderLabel</strong>
+                        <span class="status-badge status-badge-unassigned">Müşteri</span>
+                        <small class="text-muted">@Model.ReceivedAt.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</small>
+                    </div>
+                    @* sandbox="" (allow-same-origin/allow-scripts verilmez) içeriği opak bir origin'e izole eder,
+                       bu yüzden JS ile boyutunu okuyamayız; sabit yükseklikte kaydırmalı gösteriyoruz. *@
+                    <iframe src="@Url.Action("BodyFrame", new { id = Model.Id })"
+                            sandbox=""
+                            class="mail-body-frame"
+                            style="width:100%; height:@(isFrame ? "360px" : "500px"); border:none;">
+                    </iframe>
+
+                    @{
+                        var otherAttachments = Model.Attachments.Where(a => !a.IsImage).ToList();
+                    }
+                    @if (Model.ImageAttachments.Any())
+                    {
+                        <div class="attachment-strip mt-2">
+                            @foreach (var image in Model.ImageAttachments)
+                            {
+                                <button type="button" class="attachment-strip-item"
+                                        data-gallery-open="@GalleryIndexOf(image.WebPath)" data-gallery-target="@galleryModalId"
+                                        title="@image.FileName">
+                                    <img src="@image.WebPath" alt="@image.FileName" loading="lazy" />
+                                </button>
+                            }
+                        </div>
+                    }
+                    @if (otherAttachments.Any())
+                    {
+                        <ul class="plain-file-list mt-2 mb-0">
+                            @foreach (var attachment in otherAttachments)
+                            {
+                                <li><a href="@attachment.WebPath" target="_blank" rel="noopener">@attachment.FileName</a></li>
+                            }
+                        </ul>
+                    }
+                </div>
+            </div>
+
+            @foreach (var reply in Model.Replies)
+            {
+                var replyColor = reply.IsInbound
+                    ? CustomerColor(reply.FromAddress)
+                    : AvatarColors.ColorFor(reply.SentByUserId, reply.SentByDisplayName);
+                <div class="reply-item" style="border-left-color:@replyColor">
+                    <span class="avatar-circle avatar-sm" style="background:@replyColor">@AvatarHelper.Initials(reply.SentByDisplayName, reply.SentByDisplayName)</span>
+                    <div class="reply-item-body">
+                        <div class="reply-item-top">
+                            <strong>@reply.SentByDisplayName</strong>
+                            @if (reply.IsInbound)
+                            {
+                                <span class="status-badge status-badge-unassigned">Müşteri</span>
+                            }
+                            <small class="text-muted">@reply.SentAt.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</small>
+                        </div>
+                        <div class="reply-item-text">@reply.Body</div>
+                        @{
+                            var replyImages = reply.Attachments.Where(a => a.IsImage).ToList();
+                            var replyOtherFiles = reply.Attachments.Where(a => !a.IsImage).ToList();
+                        }
+                        @if (replyImages.Any())
+                        {
+                            <div class="attachment-strip mt-1">
+                                @foreach (var image in replyImages)
+                                {
+                                    <button type="button" class="attachment-strip-item"
+                                            data-gallery-open="@GalleryIndexOf(image.WebPath)" data-gallery-target="@galleryModalId"
+                                            title="@image.FileName">
+                                        <img src="@image.WebPath" alt="@image.FileName" loading="lazy" />
+                                    </button>
+                                }
+                            </div>
+                        }
+                        @if (replyOtherFiles.Any())
+                        {
+                            <ul class="plain-file-list mt-1 mb-0">
+                                @foreach (var replyAttachment in replyOtherFiles)
+                                {
+                                    <li><a href="@replyAttachment.WebPath" target="_blank" rel="noopener">@replyAttachment.FileName</a></li>
+                                }
+                            </ul>
+                        }
+                    </div>
+                </div>
+            }
+
+            <canvas id="annotationCanvas-@Model.Id" class="mail-annotation-canvas"></canvas>
+        </div>
+
+        <div class="mail-detail-compose-area">
+        <form id="annotationTokenForm-@Model.Id" style="display:none;">
+            @Html.AntiForgeryToken()
+        </form>
+
+        <h6 class="section-label">Yanıtla</h6>
+        @if (Model.HasDraft)
+        {
+            <p class="draft-note">
+                Taslak &mdash; @Model.DraftUpdatedByDisplayName tarafından @Model.DraftUpdatedAt?.ToLocalTime().ToString("dd.MM.yyyy HH:mm") tarihinde kaydedildi.
+            </p>
+        }
+        <form asp-action="SendReply" asp-route-id="@Model.Id" method="post" enctype="multipart/form-data">
+            <input type="hidden" name="returnTo" value="@returnTo" />
+            <input type="hidden" name="folder" value="@folder" />
+            <div class="compose-box" id="composeBox-@Model.Id">
+                <textarea id="replyBody-@Model.Id" name="body" class="compose-textarea" rows="4" placeholder="Yanıtınızı yazın... (dosyaları buraya sürükleyip bırakabilirsiniz)">@Model.DraftBody</textarea>
+                <div id="attachmentList-@Model.Id" class="compose-attachment-list"></div>
+                <div class="compose-toolbar">
+                    <div class="compose-toolbar-left">
+                        <button type="button" id="attachTrigger-@Model.Id" class="icon-btn" title="Dosya ekle (birden fazla seçebilirsiniz)">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05 12.25 20.24a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" /></svg>
+                        </button>
+                        <input type="file" name="attachments" id="attachInput-@Model.Id" multiple hidden />
+
+                        <div class="reply-toolbar">
+                            <button type="button" id="emojiTrigger-@Model.Id" class="icon-btn" title="Emoji ekle">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10" /><path d="M8 14s1.5 2 4 2 4-2 4-2" /><line x1="9" y1="9" x2="9.01" y2="9" /><line x1="15" y1="9" x2="15.01" y2="9" /></svg>
+                            </button>
+                            <div id="emojiPanel-@Model.Id" class="emoji-picker-panel"></div>
+                        </div>
+
+                        @if (draftTemplates.Any())
+                        {
+                            <select id="templatePicker-@Model.Id" class="draft-template-select" title="Taslak ekle">
+                                <option value="">Taslak Ekle&hellip;</option>
+                                @foreach (var template in draftTemplates)
+                                {
+                                    <option value="@template.Id" data-body="@template.Body">@template.Title</option>
+                                }
+                            </select>
+                        }
+                    </div>
+
+                    <div class="compose-toolbar-right">
+                        <button type="submit" formaction="@Url.Action("SaveDraft", new { id = Model.Id, returnTo, folder })" formnovalidate class="btn-chip">Taslak Kaydet</button>
+                        <button type="submit" class="btn-send">
+                            Gönder
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m22 2-7 20-4-9-9-4Z" /><path d="M22 2 11 13" /></svg>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Bu script, sayfanın altındaki emoji-data.js/emoji-picker.js'den ÖNCE
+    // (RenderBody içinde) çalışıyor; DOMContentLoaded'a erteleyerek
+    // window.initEmojiPicker'ın tanımlanmış olmasını garanti ediyoruz.
+    document.addEventListener('DOMContentLoaded', function () {
+        var trigger = document.getElementById('emojiTrigger-@Model.Id');
+        var panel = document.getElementById('emojiPanel-@Model.Id');
+        var textarea = document.getElementById('replyBody-@Model.Id');
+        if (trigger && panel && textarea && window.initEmojiPicker) {
+            window.initEmojiPicker(trigger, textarea, panel);
+        }
+
+        var templatePicker = document.getElementById('templatePicker-@Model.Id');
+        if (templatePicker && textarea && window.initDraftTemplatePicker) {
+            window.initDraftTemplatePicker(templatePicker, textarea);
+        }
+
+        var annotationCanvas = document.getElementById('annotationCanvas-@Model.Id');
+        var annotationWrap = document.getElementById('annotationWrap-@Model.Id');
+        var annotationTokenInput = document.querySelector('#annotationTokenForm-@Model.Id input[name="__RequestVerificationToken"]');
+        if (annotationCanvas && annotationWrap && annotationTokenInput && window.initMailAnnotation) {
+            window.initMailAnnotation({
+                canvas: annotationCanvas,
+                wrap: annotationWrap,
+                mailId: @Model.Id,
+                token: annotationTokenInput.value,
+                toolButtons: Array.from(document.querySelectorAll('.annotation-tool')),
+                undoBtn: document.getElementById('annotationUndo-@Model.Id'),
+                clearBtn: document.getElementById('annotationClear-@Model.Id')
+            });
+        }
+
+        // Ek secimi: birden fazla dosya, birikimli secim, tek tek kaldirma ve
+        // surukle-birak (bkz. wwwroot/js/mail-attachments.js).
+        var attachTrigger = document.getElementById('attachTrigger-@Model.Id');
+        var attachInput = document.getElementById('attachInput-@Model.Id');
+        var attachmentList = document.getElementById('attachmentList-@Model.Id');
+        if (attachTrigger && attachInput && attachmentList && window.initComposeAttachments) {
+            window.initComposeAttachments({
+                trigger: attachTrigger,
+                input: attachInput,
+                list: attachmentList,
+                dropZone: document.getElementById('composeBox-@Model.Id'),
+                // Sunucu tarafi sinir 50 MB (bkz. MailController.SendReply
+                // [RequestSizeLimit]); govde ve basliklar icin pay birakiyoruz.
+                maxTotalBytes: 45 * 1024 * 1024
+            });
+        }
+
+        // Baslik altindaki tum dropdown'lar (atama/bayrak/etiket/diger) icin
+        // ortak ac-kapa davranisi.
+        document.querySelectorAll('[data-dropdown-trigger]').forEach(function (trigger) {
+            var wrapper = trigger.closest('.detail-dropdown');
+            var panel = wrapper.querySelector('[data-dropdown-panel]');
+            trigger.addEventListener('click', function (ev) {
+                ev.stopPropagation();
+                var opening = !panel.classList.contains('open');
+                document.querySelectorAll('.detail-dropdown-panel.open').forEach(function (p) {
+                    p.classList.remove('open');
+                });
+                panel.classList.toggle('open', opening);
+            });
+        });
+        document.addEventListener('click', function (ev) {
+            document.querySelectorAll('.detail-dropdown').forEach(function (wrapper) {
+                if (!wrapper.contains(ev.target)) {
+                    var panel = wrapper.querySelector('[data-dropdown-panel]');
+                    if (panel) {
+                        panel.classList.remove('open');
+                    }
+                }
+            });
+        });
+
+        // Etiket dropdown'unda "Belirteç Ekle" / "Tag Ekle" sekmeleri.
+        document.querySelectorAll('[data-tag-tab]').forEach(function (tab) {
+            tab.addEventListener('click', function () {
+                var group = tab.closest('.detail-dropdown-panel');
+                group.querySelectorAll('[data-tag-tab]').forEach(function (t) { t.classList.remove('active'); });
+                tab.classList.add('active');
+                var target = tab.getAttribute('data-tag-tab');
+                group.querySelectorAll('[data-tag-panel]').forEach(function (p) {
+                    p.style.display = p.getAttribute('data-tag-panel') === target ? '' : 'none';
+                });
+            });
+        });
+
+        // Tag olusturucu: renk sec + metin gir + "Ekle" ile pending listeye ekle,
+        // "Kaydet" tum seti tek seferde gonderir.
+        (function () {
+            var swatchesWrap = document.getElementById('tagBuilderSwatches-@Model.Id');
+            var textInput = document.getElementById('tagBuilderText-@Model.Id');
+            var addBtn = document.getElementById('tagBuilderAdd-@Model.Id');
+            var list = document.getElementById('tagBuilderList-@Model.Id');
+            var hiddenWrap = document.getElementById('tagsHiddenInputs-@Model.Id');
+            if (!swatchesWrap || !textInput || !addBtn || !list || !hiddenWrap) {
+                return;
+            }
+
+            var selectedColor = 'gray';
+            swatchesWrap.querySelectorAll('.detail-tag-builder-swatch').forEach(function (swatch) {
+                swatch.addEventListener('click', function () {
+                    swatchesWrap.querySelectorAll('.detail-tag-builder-swatch').forEach(function (s) { s.classList.remove('selected'); });
+                    swatch.classList.add('selected');
+                    selectedColor = swatch.getAttribute('data-color-key');
+                });
+            });
+
+            function renderHiddenInputs() {
+                hiddenWrap.innerHTML = '';
+                list.querySelectorAll('.detail-tag-builder-chip').forEach(function (chip) {
+                    var textField = document.createElement('input');
+                    textField.type = 'hidden';
+                    textField.name = 'tagTexts';
+                    textField.value = chip.getAttribute('data-text');
+                    hiddenWrap.appendChild(textField);
+
+                    var colorField = document.createElement('input');
+                    colorField.type = 'hidden';
+                    colorField.name = 'tagColors';
+                    colorField.value = chip.getAttribute('data-color');
+                    hiddenWrap.appendChild(colorField);
+                });
+            }
+
+            function addChip(text, colorKey) {
+                var chip = document.createElement('span');
+                chip.className = 'detail-tag-builder-chip tag-chip-' + colorKey;
+                chip.setAttribute('data-text', text);
+                chip.setAttribute('data-color', colorKey);
+                chip.textContent = text;
+
+                var remove = document.createElement('button');
+                remove.type = 'button';
+                remove.className = 'detail-tag-builder-chip-remove';
+                remove.textContent = '×';
+                remove.addEventListener('click', function () {
+                    chip.remove();
+                    renderHiddenInputs();
+                });
+                chip.appendChild(remove);
+
+                list.appendChild(chip);
+                renderHiddenInputs();
+            }
+
+            var existingTags = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Tags.Select(t => new { text = t.Text, color = t.ColorKey })));
+            existingTags.forEach(function (t) { addChip(t.text, t.color); });
+
+            addBtn.addEventListener('click', function () {
+                var text = textInput.value.trim();
+                if (!text) {
+                    return;
+                }
+                addChip(text, selectedColor);
+                textInput.value = '';
+                textInput.focus();
+            });
+        })();
+    });
+</script>

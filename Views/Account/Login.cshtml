@@ -1,0 +1,77 @@
+@model LoginViewModel
+@{
+    ViewData["Title"] = "Giriş Yap";
+    Layout = "_AuthLayout";
+}
+
+<div class="auth-wrapper">
+    <div class="auth-brand-panel">
+        <div class="auth-brand-logo">
+            <img src="~/assets/creamobile-logo.png" alt="Creamobile" />
+        </div>
+
+        <div class="auth-brand-copy">
+            <h1>Her zaman elinden gelenin en iyisini yap</h1>
+        </div>
+
+        <div class="auth-brand-footer">
+            &copy; @DateTime.Now.Year Creamobile &mdash; Destek Mail Sistemi
+        </div>
+    </div>
+
+    <div class="auth-form-panel">
+        <div class="auth-outer-card">
+            <div class="auth-icon-badge">
+                <img src="~/assets/creamobile-icon.png" alt="Creamobile" />
+            </div>
+
+            <div class="auth-tabs">
+                <a class="auth-tab active" asp-action="Login">Giriş Yap</a>
+                <a class="auth-tab" asp-action="Register">Kayıt Ol</a>
+            </div>
+
+            <div class="auth-inner-card">
+                <h2>Tekrar Hoş Geldiniz</h2>
+                <p class="subtitle">Devam etmek için hesabınıza giriş yapın.</p>
+
+                <form asp-action="Login" asp-route-returnUrl="@ViewData["ReturnUrl"]" method="post" novalidate>
+                    <div asp-validation-summary="ModelOnly" class="alert alert-danger py-2" style="display:none"></div>
+
+                    <div class="mb-3">
+                        <label asp-for="UserName" class="form-label"></label>
+                        <input asp-for="UserName" class="form-control" placeholder="kullanici.adi veya ornek@sirket.com" autocomplete="username" />
+                        <span asp-validation-for="UserName" class="text-danger"></span>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label asp-for="Password" class="form-label"></label>
+                        <input asp-for="Password" class="form-control" placeholder="********" autocomplete="current-password" />
+                        <span asp-validation-for="Password" class="text-danger"></span>
+                    </div>
+
+                    <div class="mb-4 d-flex align-items-center justify-content-between">
+                        <div class="form-check">
+                            <input asp-for="RememberMe" class="form-check-input" />
+                            <label asp-for="RememberMe" class="form-check-label"></label>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="auth-btn-primary">Giriş Yap</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+        // Sunucudan gelen validation-summary hata içeriyorsa göster.
+        (function () {
+            var summary = document.querySelector('.validation-summary-errors');
+            if (summary) {
+                summary.closest('.alert').style.display = 'block';
+            }
+        })();
+    </script>
+}

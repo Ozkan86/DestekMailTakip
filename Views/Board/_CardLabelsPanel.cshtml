@@ -1,0 +1,31 @@
+@model CardLabelsPanelModel
+<div class="board-card-menu-surface">
+    <div class="board-card-menu-header">
+        <span class="board-card-menu-title">Etiketler</span>
+        <button type="button" class="board-card-menu-close-btn" title="Kapat">&times;</button>
+    </div>
+
+    @if (Model.Labels.Count > 3)
+    {
+        <input type="text" class="board-label-search" placeholder="Etiketleri ara" />
+    }
+
+    <div class="board-label-list">
+        @foreach (var label in Model.Labels)
+        {
+            <div class="board-label-row" data-label-name="@label.Name.ToLowerInvariant()">
+                <label class="board-label-check" title="@(label.IsSelected ? "Karttan kaldır" : "Kartta göster")">
+                    <input type="checkbox" class="board-label-checkbox"
+                           data-label-id="@label.Id" data-board-id="@Model.BoardId" data-card-id="@Model.CardId"
+                           @(label.IsSelected ? "checked" : "") />
+                </label>
+                <span class="board-label-strip" style="background:@label.Color;">@label.Name</span>
+                <button type="button" class="board-label-edit-btn" data-label-id="@label.Id" data-board-id="@Model.BoardId" data-card-id="@Model.CardId" title="Etiketi düzenle">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
+                </button>
+            </div>
+        }
+    </div>
+
+    <button type="button" class="board-label-create-btn" data-board-id="@Model.BoardId" data-card-id="@Model.CardId">+ Yeni Etiket Oluştur</button>
+</div>

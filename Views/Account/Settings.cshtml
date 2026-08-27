@@ -1,0 +1,36 @@
+@model AccountSettingsViewModel
+@{
+    ViewData["Title"] = "Hesap Ayarları";
+}
+
+<div class="admin-page">
+    @if (TempData["AccountMessage"] is string accountMessage)
+    {
+        <div class="alert alert-success">@accountMessage</div>
+    }
+
+    <div asp-validation-summary="ModelOnly" class="alert alert-danger"></div>
+
+    <div class="admin-panel">
+        <h2>Hesap Ayarları</h2>
+        <form asp-action="Settings" method="post" class="admin-form">
+            <div class="admin-form-row">
+                <label asp-for="UserName" class="form-label"></label>
+                <input asp-for="UserName" class="admin-input" required />
+            </div>
+            <div class="admin-form-row">
+                <label asp-for="CurrentPassword" class="form-label"></label>
+                <input asp-for="CurrentPassword" class="admin-input" required />
+            </div>
+            <div class="admin-form-row">
+                <label asp-for="NewPassword" class="form-label"></label>
+                <input asp-for="NewPassword" class="admin-input" />
+            </div>
+            <div class="admin-form-row">
+                <label asp-for="ConfirmNewPassword" class="form-label"></label>
+                <input asp-for="ConfirmNewPassword" class="admin-input" />
+            </div>
+            <button type="submit" class="btn-chip btn-chip-primary">Kaydet</button>
+        </form>
+    </div>
+</div>

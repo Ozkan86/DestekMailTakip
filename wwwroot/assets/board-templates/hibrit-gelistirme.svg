@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 260">
+  <rect width="480" height="260" fill="#EBF0F6"/>
+
+  <!-- 4 kolon: Kanban akisi + zorunlu musteri onay kapisi -->
+  <g fill="#dbe6f0" stroke="#c3d3e2">
+    <rect x="18" y="30" width="102" height="200" rx="11"/>
+    <rect x="128" y="30" width="102" height="200" rx="11"/>
+    <rect x="238" y="30" width="102" height="200" rx="11"/>
+    <rect x="348" y="30" width="102" height="200" rx="11"/>
+  </g>
+  <g fill="#ffffff" stroke="#c3d3e2">
+    <rect x="28" y="44" width="82" height="28" rx="6"/>
+    <rect x="138" y="44" width="82" height="28" rx="6"/>
+    <rect x="138" y="80" width="82" height="28" rx="6"/>
+  </g>
+  <rect x="248" y="44" width="82" height="28" rx="6" fill="#e8d3a0" stroke="#cdb787"/>
+  <rect x="358" y="44" width="82" height="28" rx="6" fill="#ffffff" stroke="#c3d3e2"/>
+
+  <!-- Rozet: iki yolun birlesmesi (hibrit akis) -->
+  <circle cx="440" cy="34" r="26" fill="#ffffff" stroke="#235585" stroke-width="2.5"/>
+  <path d="M430 24 v6 a6 6 0 0 0 6 6 h8 a6 6 0 0 1 6 6 v6" fill="none" stroke="#235585" stroke-width="2.4" stroke-linecap="round"/>
+  <circle cx="430" cy="24" r="2.6" fill="#235585"/>
+  <circle cx="450" cy="48" r="2.6" fill="#235585"/>
+  <path d="M430 46 v-6 a6 6 0 0 1 6 -6" fill="none" stroke="#235585" stroke-width="2.4" stroke-linecap="round"/>
+  <circle cx="430" cy="46" r="2.6" fill="#235585"/>
+</svg>

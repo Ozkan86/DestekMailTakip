@@ -1,0 +1,29 @@
+@model List<EngineerCardEventDrawerItem>
+
+@{
+    var groups = Model.GroupBy(i => new { i.BoardId, i.BoardTitle }).ToList();
+}
+
+<div class="stats-drawer-panel">
+    @if (!groups.Any())
+    {
+        <div class="stats-drawer-empty">Kayıt yok.</div>
+    }
+    else
+    {
+        foreach (var group in groups)
+        {
+            <div class="stats-drawer-group-title">@group.Key.BoardTitle</div>
+            foreach (var item in group)
+            {
+                <a class="stats-drawer-row" asp-controller="Board" asp-action="Details" asp-route-id="@item.BoardId" asp-route-highlightCardId="@item.CardId">
+                    <div class="stats-drawer-row-title">@item.CardTitle</div>
+                    <div class="stats-drawer-row-meta">
+                        <span class="stats-drawer-row-folder">@item.EventLabel</span>
+                        <span class="stats-drawer-row-time">@item.EventAt.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</span>
+                    </div>
+                </a>
+            }
+        }
+    }
+</div>

@@ -1,0 +1,29 @@
+@model List<EngineerNote>
+
+@if (!Model.Any())
+{
+    <div class="stats-drawer-empty">Henüz not eklemediniz.</div>
+}
+else
+{
+    foreach (var note in Model)
+    {
+        <div class="stats-note-item" data-note-id="@note.Id">
+            <button type="button" class="stats-note-drag-handle" draggable="true" title="Sürükleyerek sırala" aria-label="Sürükleyerek sırala">
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><circle cx="9" cy="6" r="1.6"/><circle cx="15" cy="6" r="1.6"/><circle cx="9" cy="12" r="1.6"/><circle cx="15" cy="12" r="1.6"/><circle cx="9" cy="18" r="1.6"/><circle cx="15" cy="18" r="1.6"/></svg>
+            </button>
+            <div class="stats-note-content">
+                <div class="stats-note-body">@note.Body</div>
+                <div class="stats-note-footer">
+                    <span class="stats-note-date">@note.CreatedAt.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</span>
+                    <div class="stats-note-actions">
+                        <button type="button" class="stats-note-edit-btn" data-note-id="@note.Id" title="Notu düzenle" aria-label="Notu düzenle">
+                            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
+                        </button>
+                        <button type="button" class="stats-note-delete-btn" data-note-id="@note.Id" title="Notu sil" aria-label="Notu sil">&times;</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+}

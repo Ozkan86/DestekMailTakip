@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 260">
+  <rect width="480" height="260" fill="#EBF0F6"/>
+
+  <!-- 3 ana kolon (Requests / Testing.. / Sprint Done) -->
+  <g fill="#dbe6f0" stroke="#c3d3e2">
+    <rect x="20" y="30" width="130" height="170" rx="12"/>
+    <rect x="164" y="30" width="130" height="170" rx="12"/>
+    <rect x="308" y="30" width="130" height="170" rx="12"/>
+  </g>
+  <g fill="#ffffff" stroke="#c3d3e2">
+    <rect x="30" y="44" width="110" height="28" rx="6"/>
+    <rect x="30" y="80" width="110" height="28" rx="6"/>
+    <rect x="174" y="44" width="110" height="28" rx="6"/>
+  </g>
+  <rect x="318" y="44" width="110" height="28" rx="6" fill="#e0b89a" stroke="#c99e7c"/>
+  <rect x="318" y="80" width="110" height="28" rx="6" fill="#ffffff" stroke="#c3d3e2"/>
+
+  <!-- Sprint turlarini temsil eden sayfalama noktalari -->
+  <g fill="#8fa3b8">
+    <circle cx="216" cy="222" r="6"/>
+    <circle cx="236" cy="222" r="6"/>
+  </g>
+  <circle cx="256" cy="222" r="7" fill="#235585"/>
+
+  <!-- Rozet: dongu oku (sprint turu) -->
+  <circle cx="440" cy="34" r="26" fill="#ffffff" stroke="#235585" stroke-width="2.5"/>
+  <path d="M431 26 a12 12 0 1 1 -4 17" fill="none" stroke="#235585" stroke-width="2.6" stroke-linecap="round"/>
+  <path d="M431 19 v8 h8" fill="none" stroke="#235585" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

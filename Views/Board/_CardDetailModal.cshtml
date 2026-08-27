@@ -1,0 +1,142 @@
+@model CardDetailViewModel
+@{
+    var card = Model.Card;
+}
+<div class="board-card-detail-modal-inner" data-board-id="@Model.BoardId" data-card-id="@card.Id">
+    <button type="button" class="board-card-detail-close-btn" title="Kapat">&times;</button>
+
+    <div class="board-card-detail-cover-wrap@(card.HasCover ? "" : " no-cover")">
+        @if (card.CoverImagePath is not null)
+        {
+            <div class="board-card-detail-cover board-card-detail-cover-image" style="background-image:url('@card.CoverImagePath');"></div>
+        }
+        else if (card.CoverColor is not null)
+        {
+            <div class="board-card-detail-cover board-card-detail-cover-color" style="background:@card.CoverColor;"></div>
+        }
+
+        <div class="board-card-detail-cover-actions">
+            <button type="button" class="board-card-detail-icon-btn" data-action="detail-change-cover" data-board-id="@Model.BoardId" data-card-id="@card.Id" title="Kapağı Değiştir">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/></svg>
+            </button>
+            @* Eskiden buradaki uc nokta menusu Tasi/Kopyala/Yansitma/Arsiv
+               listeliyordu; ilk uc secenek kaldirilinca menuye gerek kalmadi,
+               arsivleme dogrudan bu ikonla yapiliyor. *@
+            <button type="button" class="board-card-detail-icon-btn" data-action="detail-archive" data-board-id="@Model.BoardId" data-card-id="@card.Id" title="Arşivle">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8v13H3V8"/><path d="M1 3h22v5H1z"/><path d="M10 12h4"/></svg>
+            </button>
+        </div>
+    </div>
+
+    <div class="board-card-detail-body">
+        <h2 class="board-card-detail-title">@card.Title</h2>
+        <div class="board-list-item-meta">@card.BoardTitle &middot; @card.CreatedByDisplayName</div>
+
+        <div class="board-card-detail-columns">
+            <div class="board-card-detail-left">
+                <button type="button" class="board-card-detail-row-btn" data-action="detail-edit-labels" data-board-id="@Model.BoardId" data-card-id="@card.Id">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41 13.42 20.59a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82Z"/><line x1="7" y1="7" x2="7" y2="7"/></svg>
+                    <span>Etiketler</span>
+                </button>
+                <div class="board-card-labels board-card-detail-labels-list"@(card.Labels.Any() ? "" : " style=\"display:none;\"")>
+                    @foreach (var label in card.Labels)
+                    {
+                        <span class="board-card-label-strip" data-label-id="@label.Id" style="background:@label.Color;">@label.Name</span>
+                    }
+                </div>
+
+                <button type="button" class="board-card-detail-row-btn" data-action="detail-add-attachment" data-board-id="@Model.BoardId" data-card-id="@card.Id">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+                    <span>Eklentiler</span>
+                </button>
+                <div class="board-card-detail-attachments-list" data-board-id="@Model.BoardId" data-card-id="@card.Id">
+                    @foreach (var attachment in Model.Attachments)
+                    {
+                        <div class="board-attachment-item" data-attachment-id="@attachment.Id">
+                            <a href="@attachment.Url" target="_blank" rel="noopener noreferrer" class="board-attachment-link">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+                                    @if (attachment.IsFile)
+                                    {
+                                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/>
+                                    }
+                                    else
+                                    {
+                                        <path d="M10 13a5 5 0 0 0 7.07 0l2.83-2.83a5 5 0 0 0-7.07-7.07L11.5 4.5"/><path d="M14 11a5 5 0 0 0-7.07 0l-2.83 2.83a5 5 0 0 0 7.07 7.07L12.5 19.5"/>
+                                    }
+                                </svg>
+                                <span>@attachment.DisplayName</span>
+                            </a>
+                            <button type="button" class="board-attachment-remove-btn" data-attachment-id="@attachment.Id" data-board-id="@Model.BoardId" data-card-id="@card.Id" title="Kaldır">&times;</button>
+                        </div>
+                    }
+                </div>
+
+                <div class="board-card-detail-desc-section">
+                    <div class="board-card-detail-section-heading">Açıklama</div>
+                    <div class="board-rte" data-rte>
+                        @await Html.PartialAsync("_RichTextToolbar")
+                        <div class="board-rte-content board-desc-content" contenteditable="true" data-original="@(card.Description ?? "")">@Html.Raw(card.Description ?? "")</div>
+                    </div>
+                    <div class="board-card-detail-desc-actions">
+                        <button type="button" class="btn-chip btn-chip-primary board-desc-save-btn" data-board-id="@Model.BoardId" data-card-id="@card.Id">Kaydet</button>
+                        <button type="button" class="btn-chip board-desc-cancel-btn">Değişiklikleri İptal Et</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="board-card-detail-right">
+                <div class="board-card-detail-section-heading">Yorumlar</div>
+
+                <div class="board-comment-composer" data-board-id="@Model.BoardId" data-card-id="@card.Id">
+                    <div class="board-comment-placeholder" tabindex="0">Yorum yap...</div>
+                    <div class="board-rte board-comment-rte" data-rte style="display:none;">
+                        @await Html.PartialAsync("_RichTextToolbar")
+                        <div class="board-rte-content board-comment-content" contenteditable="true"></div>
+                    </div>
+                    <button type="button" class="btn-chip btn-chip-primary board-comment-save-btn" disabled style="display:none;">Kaydet</button>
+                </div>
+
+                <div class="board-comments-list">
+                    @foreach (var comment in Model.Comments)
+                    {
+                        <div class="board-comment-item" data-comment-id="@comment.Id">
+                            <div class="board-comment-meta">
+                                <span class="board-comment-author">@comment.DisplayName</span>
+                                <span class="status-badge @(comment.Role == "Sistem" ? "status-badge-pending" : "status-badge-unassigned")">@comment.Role</span>
+                                <span class="board-comment-date">@comment.CreatedAt.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</span>
+                                @if (string.Equals(comment.UserId, Model.CurrentUserId, StringComparison.Ordinal))
+                                {
+                                    <button type="button" class="board-comment-edit-btn" data-comment-id="@comment.Id" data-board-id="@Model.BoardId" data-card-id="@card.Id" title="Yorumu düzenle">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
+                                    </button>
+                                }
+                            </div>
+                            <div class="board-comment-body" data-original="@comment.Body">@Html.Raw(comment.Body)</div>
+
+                            <div class="board-comment-footer">
+                                <div class="board-comment-reactions">
+                                    @foreach (var group in comment.Reactions.GroupBy(r => r.Emoji))
+                                    {
+                                        var mine = group.Any(r => string.Equals(r.UserId, Model.CurrentUserId, StringComparison.Ordinal));
+                                        <button type="button" class="board-comment-reaction-chip@(mine ? " mine" : "")" data-comment-id="@comment.Id" data-board-id="@Model.BoardId" data-card-id="@card.Id" data-emoji="@group.Key">
+                                            <span>@group.Key</span><span class="board-comment-reaction-count">@group.Count()</span>
+                                        </button>
+                                    }
+                                </div>
+                                <button type="button" class="board-comment-react-btn" data-comment-id="@comment.Id" title="Tepki ver">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg>
+                                </button>
+                                <div class="board-reaction-picker" data-comment-id="@comment.Id" data-board-id="@Model.BoardId" data-card-id="@card.Id" style="display:none;">
+                                    @foreach (var emoji in new[] { "👍", "❤️", "😂", "😮", "😢", "🙏" })
+                                    {
+                                        <button type="button" class="board-reaction-picker-emoji" data-emoji="@emoji">@emoji</button>
+                                    }
+                                </div>
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

@@ -1,0 +1,85 @@
+@using Microsoft.AspNetCore.Identity
+@model (MailMessageModel Mail, int? SelectedId, string Folder)
+@inject UserManager<ApplicationUser> UserManager
+@inject IUserAvatarColorService AvatarColors
+@{
+    string SnippetOf(string? bodyText)
+    {
+        if (string.IsNullOrWhiteSpace(bodyText))
+        {
+            return string.Empty;
+        }
+
+        var flattened = string.Join(" ", bodyText.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries)).Trim();
+        return flattened.Length > 90 ? flattened[..90] + "…" : flattened;
+    }
+
+    var mail = Model.Mail;
+    var isActive = mail.Id == Model.SelectedId;
+    var itemClasses = "mail-list-item assigned-task-row" + (mail.IsRead ? "" : " unread") + (isActive ? " active" : "");
+    var wrapClasses = "task-row-wrap" + (isActive ? " active" : "");
+    var customerLabel = string.IsNullOrEmpty(mail.FromName) ? mail.FromAddress : mail.FromName;
+    var taskLabel = !string.IsNullOrWhiteSpace(mail.TaskName) ? mail.TaskName : mail.Subject;
+
+    // Toplu islem cubugundaki bayrak secenekleri, secili satirlarin atama durumuna
+    // gore aktif/inaktif olur (bkz. Index.cshtml -> flagDenyReasonForSelection ve
+    // sunucu tarafi karsiligi MailFlagPolicy). Bu iki bayrak o hesap icin okunur.
+    var rowUserId = UserManager.GetUserId(User);
+    var isAssignedToRowUser = mail.AssignedUsers.Any(a => a.UserId == rowUserId);
+}
+
+<div class="@wrapClasses">
+    @if (!string.IsNullOrEmpty(mail.CategoryColorKey))
+    {
+        <span class="task-marker-triangle" style="border-top-color:@TagPalette.ColorOf(mail.CategoryColorKey);" title="Belirteç"></span>
+    }
+<label class="task-row-check" title="Seç">
+    <input type="checkbox" class="task-row-checkbox" value="@mail.Id"
+           data-has-assignment="@(mail.IsAssigned ? "true" : "false")"
+           data-mine="@(isAssignedToRowUser ? "true" : "false")"
+           data-flag="@mail.FlagType"
+           data-flag-locked="@(MailFlagPolicy.IsOwnerLockActive(mail.FlagSetByUserId, rowUserId, mail.IsAssigned, isAssignedToRowUser) ? "true" : "false")" />
+</label>
+<a class="@itemClasses" data-mail-id="@mail.Id" target="mailFrame" href="@Url.Action("DetailFrame", new { id = mail.Id, folder = Model.Folder })">
+    <span class="assigned-task-sender">@customerLabel</span>
+    <span class="assigned-task-title-block">
+        <span class="assigned-task-title-row">
+            @if (!mail.IsRead)
+            {
+                <span class="assigned-task-unread-dot" title="Okunmadı"></span>
+            }
+            @foreach (var tag in mail.Tags)
+            {
+                <span class="task-tag-chip tag-chip-@tag.ColorKey">@tag.Text</span>
+            }
+            <span class="assigned-task-title">@taskLabel</span>
+            @if (mail.Attachments.Any())
+            {
+                <span class="mail-attachment-icon" title="Ek var">&#128206;</span>
+            }
+            @if (mail.HasDraft)
+            {
+                <span class="mail-item-draft-tag">Taslak</span>
+            }
+        </span>
+        <span class="assigned-task-snippet">@SnippetOf(mail.BodyText)</span>
+    </span>
+    <span class="assigned-task-right">
+        @if (mail.FlagType != MailFlagTypes.Active)
+        {
+            <span class="flag-dot flag-dot-@mail.FlagType" title="@MailFlagTypes.All.First(f => f.Key == mail.FlagType).Label"></span>
+        }
+        <span class="assigned-task-assignees">
+            @foreach (var assignee in mail.AssignedUsers)
+            {
+                var assigneeColor = AvatarColors.ColorFor(assignee.UserId, assignee.DisplayName);
+                <span class="assignee-chip">
+                    <span class="assignee-chip-avatar" style="background:@assigneeColor">@AvatarHelper.Initials(assignee.DisplayName, assignee.DisplayName)</span>
+                    @assignee.DisplayName
+                </span>
+            }
+        </span>
+        <span class="assigned-task-date">@mail.ReceivedAt.ToLocalTime().ToString("dd.MM HH:mm")</span>
+    </span>
+</a>
+</div>

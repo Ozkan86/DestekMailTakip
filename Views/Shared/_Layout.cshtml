@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - Creamobile Destek</title>
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/mail.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/board.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/emoji-picker.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/stats.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/ui-dialog.css" asp-append-version="true" />
+</head>
+<body>
+    <div class="app-shell">
+        <partial name="_TopBar" />
+
+        <div class="app-body">
+            <partial name="_FolderSidebar" />
+
+            <main role="main" class="app-content">
+                @RenderBody()
+            </main>
+        </div>
+    </div>
+
+    <script src="~/lib/jquery/dist/jquery.min.js"></script>
+    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    @* ui-dialog.js digerlerinden once yuklenir: hem data-ui-confirm dinleyicisi
+       ilk siraya girsin hem de sonraki betikler UiDialog'u hazir bulsun. *@
+    <script src="~/js/ui-dialog.js" asp-append-version="true"></script>
+    <script src="~/js/site.js" asp-append-version="true"></script>
+    <script src="~/js/emoji-data.js" asp-append-version="true"></script>
+    <script src="~/js/emoji-picker.js" asp-append-version="true"></script>
+    <script src="~/js/draft-template-picker.js" asp-append-version="true"></script>
+    <script src="~/js/mail-annotation.js" asp-append-version="true"></script>
+    <script src="~/js/mail-attachments.js" asp-append-version="true"></script>
+    <script src="~/js/board-rich-text.js" asp-append-version="true"></script>
+    <script src="~/js/board-card-menu.js" asp-append-version="true"></script>
+    <script src="~/js/board-drag-drop.js" asp-append-version="true"></script>
+    <script src="~/js/board-template-drag-drop.js" asp-append-version="true"></script>
+    <script src="~/js/board-pan-scroll.js" asp-append-version="true"></script>
+    <script src="~/js/topbar-search.js" asp-append-version="true"></script>
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

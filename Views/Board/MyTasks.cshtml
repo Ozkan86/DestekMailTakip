@@ -1,0 +1,144 @@
+@model List<MyTaskItemViewModel>
+@{
+    ViewData["Title"] = "Pano Görevlerim";
+
+    // Gomulu mod ("İstatistiklerim" sayfasindaki "Bana Ait Kartlar" bolumu):
+    // ust cubuk/klasor menusu olmadan render edilir. Kartlarin tasarimi ve
+    // butonlarin islevi degismez; tek fark, kart islemleri panoya yonlendirdigi
+    // icin (bkz. BoardController.MoveCard/MoveToTest/ReleaseFromMe) formlarin
+    // ve baglantilarin cerceveyi degil UST PENCEREYI hedeflemesi -- boylece
+    // davranis "Pano Görevlerim" sayfasindakiyle birebir ayni kalir.
+    var embedded = ViewData["Embedded"] is true;
+    var frameTarget = embedded ? "_top" : null;
+
+    Layout = embedded ? "_FrameLayout" : "_Layout";
+    if (embedded)
+    {
+        ViewData["FrameIncludeBoardCss"] = true;
+    }
+
+    // Kart aksiyon butonlarinin ikonlari (bkz. .board-task-btn, board.css).
+    const string ArrowRightIcon = "<line x1=\"5\" y1=\"12\" x2=\"19\" y2=\"12\" /><polyline points=\"12 5 19 12 12 19\" />";
+    const string CheckIcon = "<polyline points=\"20 6 9 17 4 12\" />";
+    const string RejectIcon = "<line x1=\"18\" y1=\"6\" x2=\"6\" y2=\"18\" /><line x1=\"6\" y1=\"6\" x2=\"18\" y2=\"18\" />";
+}
+
+@if (embedded)
+{
+    <style>
+        body { background: #fff; padding: 4px 2px 12px; }
+        .board-card { max-width: none !important; }
+    </style>
+}
+else
+{
+    <div class="board-page-header">
+        <h2>Pano Görevlerim</h2>
+        <a class="board-header-btn board-header-btn-back" asp-action="Index" title="Pano listesine dön">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12" /><polyline points="12 19 5 12 12 5" /></svg>
+            Panolar
+        </a>
+    </div>
+}
+
+@if (!Model.Any())
+{
+    <p class="text-muted">Üstünüze aldığınız bir görev yok.</p>
+}
+else
+{
+    <div class="board-list">
+        @foreach (var item in Model)
+        {
+            var card = item.Card;
+            // "Üstümden Bırak" (bkz. BoardController.ReleaseFromMe): sablon
+            // farketmeksizin, sadece kart hala ilk uzerine alindigi listedeyken
+            // (ListKey = AssignedListKey) mumkundur; kart sonraki bir listeye
+            // tasindiktan sonra secenek gorunur ama devre disi kalir (Detay
+            // sayfasindaki kart ikonuyla ayni kural, bkz. _GenericBoardCardItem.cshtml).
+            var canRelease = card.ListKey == card.AssignedListKey;
+            <div class="board-card" style="max-width:720px;">
+                <div class="board-list-item-meta">@card.BoardTitle &middot; @item.ListLabel</div>
+                <div class="board-card-title">@card.Title</div>
+                @if (!string.IsNullOrWhiteSpace(card.Description))
+                {
+                    <div class="board-card-desc">@card.Description</div>
+                }
+                @if (card.RejectedCount > 0)
+                {
+                    <div class="board-card-meta">
+                        <span class="status-badge status-badge-pending" title="@card.LastRejectionNote">Reddedildi (@card.RejectedCount)</span>
+                    </div>
+                }
+                <div class="board-card-actions board-task-actions">
+                    <a class="board-task-btn" asp-action="Details" asp-route-id="@card.BoardId" target="@frameTarget" title="Kartın bulunduğu panoyu aç">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" /><polyline points="15 3 21 3 21 9" /><line x1="10" y1="14" x2="21" y2="3" /></svg>
+                        Panoya Git
+                    </a>
+
+                    @if (item.IsKlasik)
+                    {
+                        <form asp-action="MoveToTest" asp-route-cardId="@card.Id" asp-route-boardId="@card.BoardId" method="post" target="@frameTarget">
+                            <button type="submit" class="board-task-btn board-task-btn-primary board-task-btn-move" title="Kartı Test listesine taşı">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">@Html.Raw(ArrowRightIcon)</svg>
+                                Teste Taşı
+                            </button>
+                        </form>
+                    }
+                    else
+                    {
+                        @foreach (var move in item.Moves)
+                        {
+                            var buttonClass = move.IsApproval
+                                ? "board-task-btn board-task-btn-primary"
+                                : (move.IsRejection ? "board-task-btn board-task-btn-danger" : "board-task-btn board-task-btn-move");
+                            var buttonIcon = move.IsApproval ? CheckIcon : (move.IsRejection ? RejectIcon : ArrowRightIcon);
+                            var targetLabel = BoardTemplates.Get(item.TemplateKey).GetList(move.ToListKey)?.Label ?? move.ToListKey;
+
+                            if (move.RequiresNote)
+                            {
+                                @* Bkz. _GenericBoardCardItem.cshtml: aciklama ortak pencerede soruluyor. *@
+                                <form asp-action="MoveCard" asp-route-boardId="@card.BoardId" asp-route-cardId="@card.Id" method="post" target="@frameTarget"
+                                      data-ui-prompt-title="@(move.IsRejection ? "Kartı reddet" : "Taşıma gerekçesi")"
+                                      data-ui-prompt="Kart &quot;@targetLabel&quot; listesine taşınacak. Bu taşıma için bir açıklama gerekiyor."
+                                      data-ui-prompt-label="Açıklama / gerekçe"
+                                      data-ui-prompt-placeholder="Örn. Kod incelemesi tamamlandı, teste hazır."
+                                      data-ui-prompt-required-message="Bu taşıma için bir açıklama girmelisiniz."
+                                      data-ui-prompt-field="note"
+                                      data-ui-prompt-ok="@(move.IsRejection ? "Reddet" : "Taşı")"
+                                      data-ui-prompt-tone="@(move.IsRejection ? "warning" : "primary")">
+                                    <input type="hidden" name="targetListKey" value="@move.ToListKey" />
+                                    <input type="hidden" name="targetPosition" value="1" />
+                                    <input type="hidden" name="note" />
+                                    <button type="submit" class="@buttonClass" title="Kartı &quot;@targetLabel&quot; listesine taşı">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">@Html.Raw(buttonIcon)</svg>
+                                        @targetLabel
+                                    </button>
+                                </form>
+                            }
+                            else
+                            {
+                                <form asp-action="MoveCard" asp-route-boardId="@card.BoardId" asp-route-cardId="@card.Id" method="post" target="@frameTarget">
+                                    <input type="hidden" name="targetListKey" value="@move.ToListKey" />
+                                    <input type="hidden" name="targetPosition" value="1" />
+                                    <button type="submit" class="@buttonClass" title="Kartı &quot;@targetLabel&quot; listesine taşı">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">@Html.Raw(buttonIcon)</svg>
+                                        @targetLabel
+                                    </button>
+                                </form>
+                            }
+                        }
+                    }
+
+                    <form asp-action="ReleaseFromMe" asp-route-cardId="@card.Id" asp-route-boardId="@card.BoardId" method="post" target="@frameTarget" class="board-task-release-form">
+                        <button type="submit" class="board-task-btn board-task-btn-danger" @(canRelease ? "" : "disabled")
+                                title="@(canRelease ? "Bu görevi üstünüzden bırakın" : "Görevi sadece ilk üzerine aldığınız listede bırakabilirsiniz")">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><line x1="17" y1="11" x2="23" y2="11" /></svg>
+                            Üstümden Bırak
+                        </button>
+                    </form>
+                </div>
+            </div>
+        }
+    </div>
+}

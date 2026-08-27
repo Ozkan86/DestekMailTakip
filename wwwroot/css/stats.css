@@ -1,0 +1,366 @@
+/* "İstatistiklerim" sayfası (mühendis profil rozeti) */
+
+.stats-page {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 24px 20px 60px;
+}
+
+.stats-page-title {
+    margin: 0 0 20px;
+    font-size: 22px;
+    font-weight: 700;
+    color: #131a2c;
+}
+
+.stats-columns {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+}
+
+.stats-column {
+    flex: 1 1 420px;
+    min-width: 320px;
+    background: #fff;
+    border: 1px solid #eceef2;
+    border-radius: 14px;
+    padding: 18px;
+}
+
+.stats-column-title {
+    margin: 0 0 14px;
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--brand-blue, #235585);
+}
+
+.stats-tiles {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+}
+
+.stats-tile {
+    display: block;
+    text-align: left;
+    background: var(--sidebar-bg, #ebf0f6);
+    border: 1px solid var(--sidebar-border, #d8dee8);
+    border-radius: 12px;
+    padding: 14px;
+    font-family: inherit;
+    cursor: default;
+}
+
+.stats-tile-drawer {
+    cursor: pointer;
+    transition: background-color .15s ease, border-color .15s ease;
+}
+
+.stats-tile-drawer:hover,
+.stats-tile-drawer.active {
+    background: rgba(35, 85, 133, .08);
+    border-color: var(--brand-blue, #235585);
+}
+
+.stats-tile-value {
+    font-size: 22px;
+    font-weight: 700;
+    color: #131a2c;
+}
+
+.stats-tile-label {
+    margin-top: 4px;
+    font-size: 12.5px;
+    color: #6b7280;
+}
+
+.stats-drawer {
+    display: none;
+    margin-top: 14px;
+    border: 1px solid var(--sidebar-border, #d8dee8);
+    border-radius: 10px;
+    max-height: 320px;
+    overflow-y: auto;
+}
+
+.stats-drawer.open {
+    display: block;
+}
+
+.stats-drawer-panel {
+    display: flex;
+    flex-direction: column;
+}
+
+.stats-drawer-loading,
+.stats-drawer-empty {
+    padding: 14px;
+    font-size: 13px;
+    color: #9aa0ab;
+    text-align: center;
+}
+
+.stats-drawer-group-title {
+    padding: 8px 12px 4px;
+    font-size: 11.5px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .03em;
+    color: #9aa0ab;
+    background: #f7f8fb;
+}
+
+.stats-drawer-row {
+    display: block;
+    padding: 10px 12px;
+    text-decoration: none;
+    color: inherit;
+    border-top: 1px solid #eceef2;
+}
+
+.stats-drawer-row:hover {
+    background: #f8f9fb;
+}
+
+.stats-drawer-row-title {
+    font-size: 13.5px;
+    font-weight: 600;
+    color: #131a2c;
+}
+
+.stats-drawer-row-meta {
+    margin-top: 2px;
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    font-size: 11.5px;
+    color: #9aa0ab;
+}
+
+.stats-drawer-row-folder {
+    color: var(--brand-blue, #235585);
+    font-weight: 600;
+}
+
+/* ---- Gomulu bolumler ("Bana Ait Görevler", "Bana Ait Kapatılmış",
+   "Bana Ait Kartlar"). Kart cercevesi istatistik kartlariyla ayni; icerideki
+   iframe ilgili sayfanin (mail klasoru / Pano Görevlerim) tamamini calistirir. ---- */
+.stats-embed-section {
+    margin-top: 20px;
+    background: #fff;
+    border: 1px solid #eceef2;
+    border-radius: 14px;
+    padding: 18px;
+}
+
+.stats-embed-frame {
+    height: 460px;
+    border: 1px solid var(--sidebar-border, #d8dee8);
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+.stats-embed-frame iframe {
+    display: block;
+    width: 100%;
+    height: 100%;
+    border: 0;
+}
+
+.stats-notes {
+    margin-top: 20px;
+    background: #fff;
+    border: 1px solid #eceef2;
+    border-radius: 14px;
+    padding: 18px;
+}
+
+.stats-notes-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.stats-note-add-btn {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    border: none;
+    background: var(--brand-blue, #235585);
+    color: #fff;
+    font-size: 18px;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.stats-note-add-btn:hover {
+    background: var(--brand-blue-dark, #1c446a);
+}
+
+.stats-note-form {
+    margin-top: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.stats-note-form textarea {
+    resize: vertical;
+    min-height: 70px;
+    border: 1px solid var(--sidebar-border, #d8dee8);
+    border-radius: 8px;
+    padding: 8px 10px;
+    font-family: inherit;
+    font-size: 13.5px;
+}
+
+.stats-note-form-actions {
+    display: flex;
+    gap: 8px;
+}
+
+#statsNotesList {
+    margin-top: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.stats-note-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    background: var(--sidebar-bg, #ebf0f6);
+    border: 1px solid var(--sidebar-border, #d8dee8);
+    border-radius: 10px;
+    padding: 10px 12px;
+    will-change: transform;
+}
+
+.stats-note-content {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.stats-note-drag-handle {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    margin-top: 1px;
+    padding: 0;
+    border: none;
+    background: none;
+    color: #d0d5dd;
+    cursor: grab;
+    touch-action: none;
+}
+
+.stats-note-drag-handle:hover {
+    color: #6b7280;
+}
+
+.stats-note-item.stats-note-dragging {
+    opacity: .45;
+    cursor: grabbing;
+}
+
+.stats-note-item.stats-note-dragging .stats-note-drag-handle {
+    cursor: grabbing;
+}
+
+@keyframes statsNoteSettle {
+    0% {
+        transform: scale(1.03);
+        box-shadow: 0 6px 16px rgba(35, 85, 133, .28);
+    }
+
+    60% {
+        transform: scale(.995);
+        box-shadow: 0 2px 6px rgba(35, 85, 133, .12);
+    }
+
+    100% {
+        transform: scale(1);
+        box-shadow: none;
+    }
+}
+
+.stats-note-item.stats-note-settling {
+    animation: statsNoteSettle .28s ease;
+    border-color: var(--brand-blue, #235585);
+}
+
+.stats-note-body {
+    font-size: 13.5px;
+    color: #131a2c;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+.stats-note-footer {
+    margin-top: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.stats-note-date {
+    font-size: 11px;
+    color: #9aa0ab;
+}
+
+.stats-note-actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.stats-note-edit-btn,
+.stats-note-delete-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    background: none;
+    cursor: pointer;
+    padding: 2px 4px;
+}
+
+.stats-note-edit-btn {
+    color: #6b7280;
+}
+
+.stats-note-edit-btn:hover {
+    color: var(--brand-blue, #235585);
+}
+
+.stats-note-delete-btn {
+    color: #c0392b;
+    font-size: 16px;
+    line-height: 1;
+}
+
+.stats-note-delete-btn:hover {
+    color: #a53125;
+}
+
+.stats-note-edit-form {
+    margin-top: 2px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.stats-note-edit-form textarea {
+    resize: vertical;
+    min-height: 60px;
+    border: 1px solid var(--sidebar-border, #d8dee8);
+    border-radius: 8px;
+    padding: 8px 10px;
+    font-family: inherit;
+    font-size: 13.5px;
+}

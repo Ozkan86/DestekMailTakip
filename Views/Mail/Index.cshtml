@@ -1,0 +1,1022 @@
+@using Microsoft.AspNetCore.Identity
+@using task_list.Data
+@model MailIndexViewModel
+@inject UserManager<ApplicationUser> UserManager
+@inject IMailRepository MailRepository
+@{
+    var activeFolder = MailFolders.All.FirstOrDefault(f => f.Key == Model.Folder);
+    var folderHeading = Model.FolderLabel ?? activeFolder.Label ?? "Gelen Kutusu";
+    ViewData["Title"] = folderHeading;
+
+    // Gomulu mod ("İstatistiklerim" sayfasindaki bolumler): ust cubuk ve klasor
+    // menusu olmadan render edilir. Sayfanin geri kalani -- liste, toplu islem
+    // cubugu, onizleme iframe'i ve asagidaki tum betikler -- aynen calisir.
+    if (Model.Embedded)
+    {
+        Layout = "_FrameLayout";
+    }
+}
+
+@if (Model.Embedded)
+{
+    @* _FrameLayout'ta .app-shell yok; .mail-app normalde ondan yukseklik aliyor.
+       Burada govdeyi dikey flex yapiyoruz: toplu islem cubugu acilip kapandikca
+       (secim yapildiginda) liste alani kendini ona gore kisaltir, tasma olmaz. *@
+    <style>
+        html, body { height: 100%; overflow: hidden; }
+        body { display: flex; flex-direction: column; }
+        .mail-app { flex: 1 1 auto; height: auto; min-height: 0; }
+    </style>
+}
+
+@{
+    var isAssignedFolder = Model.Folder == MailFolders.Assigned;
+    var usesTaskRowDesign = !isAssignedFolder && Model.Folder != MailFolders.Drafts;
+    var startsFullWidth = isAssignedFolder || usesTaskRowDesign;
+    var mailAppClasses = "mail-app" + (startsFullWidth && Model.SelectedId is null ? " mail-app-assigned-initial" : "");
+    var supportsBulkActions = (isAssignedFolder || usesTaskRowDesign) && Model.Mails.Any();
+
+    var currentUserId = string.Empty;
+    var assignableEmployees = new List<ApplicationUser>();
+    var userFolders = new List<MailUserFolder>();
+    if (supportsBulkActions)
+    {
+        currentUserId = UserManager.GetUserId(User) ?? string.Empty;
+        assignableEmployees = (await UserManager.GetUsersInRoleAsync("Employee")).OrderBy(e => e.DisplayName).ToList();
+        userFolders = await MailRepository.GetUserFoldersAsync(currentUserId);
+    }
+}
+
+@if (TempData["BulkFlagWarning"] is string bulkFlagWarning)
+{
+    <div class="alert alert-warning">@bulkFlagWarning</div>
+}
+
+@if (supportsBulkActions)
+{
+    <div id="bulkActionBar" class="bulk-action-bar">
+        <span class="bulk-action-count"><span id="bulkSelectedCount">0</span> mail seçili</span>
+        <div class="detail-toolbar">
+            @* -------- Atama -------- *@
+            <div class="detail-dropdown">
+                <button type="button" class="icon-btn detail-dropdown-trigger" data-dropdown-trigger title="Atama">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="8.5" cy="7" r="4" /><polyline points="17 11 19 13 23 9" /></svg>
+                    <svg class="detail-dropdown-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9" /></svg>
+                </button>
+                <div class="detail-dropdown-panel" data-dropdown-panel>
+                    <form asp-action="BulkAction" method="post" class="detail-dropdown-form bulk-form">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="actionType" value="assign" />
+                        <input type="hidden" name="folder" value="@Model.Folder" />
+                        <input type="hidden" name="userId" value="@currentUserId" />
+                        <input type="text" name="taskName" class="task-name-input" placeholder="Görev adı (opsiyonel)" maxlength="200" />
+                        <button type="submit" class="detail-dropdown-item detail-dropdown-item-action">
+                            <span class="detail-dropdown-item-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="8.5" cy="7" r="4" /><polyline points="17 11 19 13 23 9" /></svg></span>
+                            Kendine Ata
+                        </button>
+                    </form>
+
+                    @if (assignableEmployees.Any())
+                    {
+                        @* Detay sayfasindaki atama paneliyle ayni tasarim (bkz.
+                           _DetailContent.cshtml): tek secimli <select> yerine
+                           checkbox listesi, yani tek seferde birden fazla muhendis. *@
+                        <form asp-action="BulkAction" method="post" class="detail-dropdown-form bulk-form">
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="actionType" value="assign" />
+                            <input type="hidden" name="folder" value="@Model.Folder" />
+                            <div class="detail-assign-employee-list">
+                                @foreach (var employee in assignableEmployees)
+                                {
+                                    <label class="admin-assign-employee-check">
+                                        <input type="checkbox" name="userId" value="@employee.Id" />
+                                        @employee.DisplayName
+                                    </label>
+                                }
+                            </div>
+                            <input type="text" name="taskName" class="task-name-input" placeholder="Görev adı (opsiyonel)" maxlength="200" />
+                            <button type="submit" class="detail-dropdown-item detail-dropdown-item-action">
+                                <span class="detail-dropdown-item-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" /></svg></span>
+                                Ekip Üyelerine Ata
+                            </button>
+                        </form>
+                    }
+                </div>
+            </div>
+
+            @* -------- Bayrak -------- *@
+            <div class="detail-dropdown">
+                <button type="button" class="icon-btn detail-dropdown-trigger" data-dropdown-trigger title="Bayrak">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z" /><line x1="4" y1="22" x2="4" y2="15" /></svg>
+                    <svg class="detail-dropdown-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9" /></svg>
+                </button>
+                <div class="detail-dropdown-panel" id="bulkFlagPanel" data-dropdown-panel>
+                    @* data-flag-guard: secili maillerin atama durumuna gore bu secenek
+                       calisma zamaninda inaktiflesir (bkz. asagidaki updateFlagGuards).
+                       Yanindaki tik ise (detay sayfasindaki gibi) o an gecerli bayragi
+                       gosterir; secili maillerin HEPSI ayni bayraktaysa isaretlenir. *@
+                    @foreach (var (key, label) in MailFlagTypes.All)
+                    {
+                        <form asp-action="BulkAction" method="post" class="detail-dropdown-form bulk-form">
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="actionType" value="flag" />
+                            <input type="hidden" name="folder" value="@Model.Folder" />
+                            <input type="hidden" name="flagType" value="@key" />
+                            <button type="submit" class="detail-dropdown-item" data-flag-guard="@key">
+                                <span class="detail-dropdown-item-icon"><span class="flag-dot flag-dot-@key"></span></span>
+                                @label
+                                <svg class="detail-dropdown-check" data-flag-check style="display:none;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
+                            </button>
+                        </form>
+                    }
+                </div>
+            </div>
+
+            @* -------- Etiket -------- *@
+            <div class="detail-dropdown">
+                <button type="button" class="icon-btn detail-dropdown-trigger" data-dropdown-trigger title="Etiket">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41 11 3H4v7l9.59 9.59a2 2 0 0 0 2.82 0l4.18-4.18a2 2 0 0 0 0-2.82z" /><circle cx="7.5" cy="7.5" r="1.5" /></svg>
+                    <svg class="detail-dropdown-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9" /></svg>
+                </button>
+                <div class="detail-dropdown-panel detail-dropdown-panel-wide" data-dropdown-panel>
+                    <div class="detail-tag-tabs">
+                        <button type="button" class="detail-tag-tab active" data-tag-tab="marker">Belirteç Ekle</button>
+                        <button type="button" class="detail-tag-tab" data-tag-tab="tags">Tag Ekle</button>
+                    </div>
+
+                    <div class="detail-tag-panel" data-tag-panel="marker">
+                        <form asp-action="BulkAction" method="post" class="detail-marker-form bulk-form">
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="actionType" value="marker" />
+                            <input type="hidden" name="folder" value="@Model.Folder" />
+                            <div class="detail-marker-swatches">
+                                @foreach (var (key, label, color) in TagPalette.All)
+                                {
+                                    <button type="submit" name="colorKey" value="@key" class="detail-marker-swatch" style="background:@color;" title="@label"></button>
+                                }
+                                <button type="submit" name="colorKey" value="" class="detail-marker-swatch detail-marker-swatch-none" title="Belirteç yok">&times;</button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <div class="detail-tag-panel" data-tag-panel="tags" style="display:none;">
+                        <form asp-action="BulkAction" method="post" class="bulk-form" id="bulkTagForm">
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="actionType" value="tag" />
+                            <input type="hidden" name="folder" value="@Model.Folder" />
+                            <div id="bulkTagHiddenInputs"></div>
+
+                            <div class="detail-tag-builder-swatches" id="bulkTagSwatches">
+                                @foreach (var (key, label, color) in TagPalette.All)
+                                {
+                                    <button type="button" class="detail-marker-swatch detail-tag-builder-swatch @(key == "gray" ? "selected" : "")" data-color-key="@key" style="background:@color;" title="@label"></button>
+                                }
+                            </div>
+                            <div class="detail-tag-builder-row">
+                                <input type="text" id="bulkTagText" class="task-name-input" placeholder="Etiket metni" maxlength="60" />
+                                <button type="button" class="btn-chip" id="bulkTagAdd">Ekle</button>
+                            </div>
+                            <div class="detail-tag-builder-list" id="bulkTagList"></div>
+
+                            <button type="submit" class="btn-chip btn-chip-primary detail-tag-builder-save">Kaydet</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            @* -------- Yildirim: simdilik islevsiz -------- *@
+            <button type="button" class="icon-btn" title="Yakında">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" /></svg>
+            </button>
+
+            @* -------- Diger islemler -------- *@
+            <div class="detail-dropdown detail-dropdown-panel-align-right">
+                <button type="button" class="icon-btn detail-dropdown-trigger" data-dropdown-trigger title="Diğer">
+                    <svg viewBox="0 0 24 24" fill="currentColor" stroke="none"><circle cx="5" cy="12" r="2" /><circle cx="12" cy="12" r="2" /><circle cx="19" cy="12" r="2" /></svg>
+                </button>
+                <div class="detail-dropdown-panel" data-dropdown-panel>
+                    <details class="admin-assign-panel">
+                        <summary class="detail-dropdown-item">
+                            <span class="detail-dropdown-item-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7v13h18V7" /><path d="M1 3h22v4H1z" /></svg></span>
+                            Klasöre Ekle
+                        </summary>
+                        <form asp-action="BulkAction" method="post" class="admin-assign-form bulk-form">
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="actionType" value="addToFolder" />
+                            <input type="hidden" name="folder" value="@Model.Folder" />
+                            @if (!userFolders.Any())
+                            {
+                                <span class="text-muted">Henüz klasörünüz yok. Soldaki menüden "+" ile klasör oluşturun.</span>
+                            }
+                            @foreach (var userFolder in userFolders)
+                            {
+                                <label class="admin-assign-employee-check">
+                                    <input type="checkbox" name="folderIds" value="@userFolder.Id" />
+                                    @userFolder.Name
+                                </label>
+                            }
+                            <button type="submit" class="btn-chip btn-chip-primary">Kaydet</button>
+                        </form>
+                    </details>
+
+                    <form asp-action="BulkAction" method="post" class="bulk-form"
+                          data-ui-confirm-title="Seçili mailleri sil"
+                          data-ui-confirm="Seçili mailler kalıcı olarak silinecek. Bu işlem geri alınamaz."
+                          data-ui-confirm-ok="Sil"
+                          data-ui-confirm-tone="danger">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="actionType" value="delete" />
+                        <input type="hidden" name="folder" value="@Model.Folder" />
+                        <button type="submit" class="detail-dropdown-item detail-dropdown-item-danger">
+                            <span class="detail-dropdown-item-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18" /><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" /><line x1="10" y1="11" x2="10" y2="17" /><line x1="14" y1="11" x2="14" y2="17" /></svg></span>
+                            Sil
+                        </button>
+                    </form>
+
+                    @if (Model.Folder == MailFolders.Spam)
+                    {
+                        <form asp-action="BulkAction" method="post" class="bulk-form">
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="actionType" value="unspam" />
+                            <input type="hidden" name="folder" value="@Model.Folder" />
+                            <button type="submit" class="detail-dropdown-item" data-flag-guard="@MailFlagTypes.Active">
+                                <span class="detail-dropdown-item-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><polygon points="7.86 2 16.14 2 22 7.86 22 16.14 16.14 22 7.86 22 2 16.14 2 7.86 7.86 2" /></svg></span>
+                                Spam Değil
+                            </button>
+                        </form>
+                    }
+                    else
+                    {
+                        <form asp-action="BulkAction" method="post" class="bulk-form">
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="actionType" value="spam" />
+                            <input type="hidden" name="folder" value="@Model.Folder" />
+                            <button type="submit" class="detail-dropdown-item" data-flag-guard="@MailFlagTypes.Spam">
+                                <span class="detail-dropdown-item-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><polygon points="7.86 2 16.14 2 22 7.86 22 16.14 16.14 22 7.86 22 2 16.14 2 7.86 7.86 2" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" /></svg></span>
+                                Spam Olarak İşaretle
+                            </button>
+                        </form>
+                    }
+
+                    <form asp-action="BulkAction" method="post" class="bulk-form">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="actionType" value="archive" />
+                        <input type="hidden" name="folder" value="@Model.Folder" />
+                        <button type="submit" class="detail-dropdown-item">
+                            <span class="detail-dropdown-item-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8v13H3V8" /><path d="M1 3h22v5H1z" /><path d="M10 12h4" /></svg></span>
+                            Arşivle
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+            @* -------- Toplu secim: Tumu / Hicbiri / Okunanlar / Okunmayanlar -------- *@
+            <div class="detail-dropdown detail-dropdown-panel-align-right">
+                <button type="button" class="icon-btn detail-dropdown-trigger" data-dropdown-trigger title="Toplu seçim">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 11 12 14 22 4" /><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" /></svg>
+                    <svg class="detail-dropdown-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9" /></svg>
+                </button>
+                <div class="detail-dropdown-panel" data-dropdown-panel>
+                    <button type="button" class="detail-dropdown-item" data-select-mode="all">
+                        <span class="detail-dropdown-item-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" /><polyline points="8 12 11 15 16 9" /></svg></span>
+                        Tümü
+                    </button>
+                    <button type="button" class="detail-dropdown-item" data-select-mode="none">
+                        <span class="detail-dropdown-item-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" /></svg></span>
+                        Hiçbiri
+                    </button>
+                    <button type="button" class="detail-dropdown-item" data-select-mode="read">
+                        <span class="detail-dropdown-item-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M21.2 8.4c.5.38.8.97.8 1.6v10a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V10a2 2 0 0 1 .8-1.6l8-6a2 2 0 0 1 2.4 0z" /><path d="m22 10-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 10" /></svg></span>
+                        Okunanlar
+                    </button>
+                    <button type="button" class="detail-dropdown-item" data-select-mode="unread">
+                        <span class="detail-dropdown-item-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2" /><polyline points="22 6 12 13 2 6" /></svg></span>
+                        Okunmayanlar
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <button type="button" id="bulkClearSelection" class="icon-btn bulk-action-bar-clear" title="Seçimi temizle">&times;</button>
+    </div>
+}
+<div class="@mailAppClasses">
+    <div class="mail-list-pane">
+        <partial name="_MailListPane" model="Model" />
+    </div>
+
+    <div class="mail-preview-pane">
+        @if (startsFullWidth)
+        {
+            @* Bu buton disaridaki (Index) sabit yukseklikli panelde oldugu icin, iframe
+               icindeki konusma ne kadar uzun olup kaydirilirsa kaydirilsin, hep gorunur
+               alanin ortasinda kalir (iframe'in kendi ic scroll'undan bagimsiz). *@
+            <button type="button" id="assignedPreviewClose" class="mail-preview-close" title="Kapat">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6" /></svg>
+            </button>
+        }
+        @* target="mailFrame" linklerinin (atanmis klasorunde henuz secim yokken bile) bir hedef
+           bulabilmesi icin iframe her zaman DOM'da olusturulur; secim yoksa gizlenip src bos birakilir. *@
+        <iframe name="mailFrame"
+                src="@(Model.SelectedId is int selectedId ? Url.Action("DetailFrame", new { id = selectedId, folder = Model.Folder }) : "about:blank")"
+                style="@(Model.SelectedId is null ? "display:none;" : "")"></iframe>
+        @if (Model.SelectedId is null)
+        {
+            <div class="mail-preview-empty">Görüntülemek için soldan bir mail seçin.</div>
+        }
+    </div>
+</div>
+
+<form id="clearMailDraftForm" method="post" style="display:none;">
+    @Html.AntiForgeryToken()
+</form>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        // Kapatma butonu (varsa) "position:fixed" oldugundan viewport'a gore her
+        // zaman dikey ortalanir; ama yatayda onizleme panelinin gercek sol
+        // kenariyla hizali durmasi icin "left" degerini burada hesapliyoruz.
+        function positionPreviewClose() {
+            var btn = document.getElementById('assignedPreviewClose');
+            var pane = document.querySelector('.mail-preview-pane');
+            if (btn && pane && pane.offsetParent !== null) {
+                btn.style.left = pane.getBoundingClientRect().left + 'px';
+            }
+        }
+        positionPreviewClose();
+        window.addEventListener('resize', positionPreviewClose);
+
+        // Mail listesindeki linkler iframe'i (mailFrame) hedefliyor, yani tıklanınca
+        // bu ana sayfa yeniden yüklenmiyor. Bu yüzden "active" (seçili) durumunu
+        // sunucudan gelen Model.SelectedId'ye değil, burada güncelliyoruz. Fonksiyon
+        // window'a atanır çünkü iframe içindeki DetailFrame (bkz. DetailFrame.cshtml),
+        // hangi mail görüntülendiğini (tıklama, önceki/sonraki ok gezinmesi veya başka
+        // bir yeniden yönlendirme fark etmeksizin) her yüklendiğinde bunu çağırır; bu
+        // sayede sol listedeki mavi "seçili" vurgusu sadece tıklamada değil, ok
+        // ikonlarıyla gezinirken de dogru maile geçer.
+        window.setActiveMailListItem = function (id) {
+            document.querySelectorAll('.mail-list-item.active').forEach(function (activeLink) {
+                activeLink.classList.remove('active');
+                var oldWrap = activeLink.closest('.task-row-wrap');
+                if (oldWrap) {
+                    oldWrap.classList.remove('active');
+                }
+            });
+
+            // Atanmis sekmesinde bir mail birden fazla kisiye atanmissa, ayni mail
+            // birden fazla grupta (satirda) gorunur; hepsini vurgulariz.
+            document.querySelectorAll('.mail-list-item[data-mail-id="' + id + '"]').forEach(function (link) {
+                link.classList.add('active');
+                var wrap = link.closest('.task-row-wrap');
+                if (wrap) {
+                    wrap.classList.add('active');
+                }
+
+                // Mail acildiginda sunucu onu okundu isaretliyor (bkz.
+                // MailController.DetailFrame); bu fonksiyon iframe her yuklendiginde
+                // cagrildigi icin burasi "okundu" aninin tam karsiligidir. Okunmadi
+                // isaretini de burada kaldiriyoruz, aksi halde ancak sayfa
+                // yenilendiginde kayboluyordu.
+                link.classList.remove('unread');
+                link.querySelectorAll('.assigned-task-unread-dot').forEach(function (dot) {
+                    dot.remove();
+                });
+            });
+
+            var app = document.querySelector('.mail-app-assigned-initial');
+            if (app) {
+                app.classList.remove('mail-app-assigned-initial');
+            }
+
+            var previewFrame = document.querySelector('.mail-preview-pane iframe[name="mailFrame"]');
+            if (previewFrame) {
+                previewFrame.style.display = '';
+            }
+            var previewEmpty = document.querySelector('.mail-preview-empty');
+            if (previewEmpty) {
+                previewEmpty.style.display = 'none';
+            }
+
+            // Bu mail az once okundu isaretlendi; chip sayaclari da guncellenmeli.
+            // (Filtre yeniden uygulanmaz: okurken satirin gozden kaybolmasi rahatsiz
+            // edici olurdu; satir bir sonraki liste tazelemesinde yerini bulur.)
+            updateReadFilterCounts();
+
+            positionPreviewClose();
+        };
+
+        // Delege dinleyici kullanilir cunku "Sadece Benim" filtresi artik AJAX
+        // ile mail-list-pane icerigini tamamen degistiriyor (bkz. asagidaki
+        // mail-list-filter-toggle bolumu); tek tek baglanan bir listener yeni
+        // gelen satirlarda calismazdi.
+        document.addEventListener('click', function (ev) {
+            var link = ev.target.closest('.mail-list-item');
+            if (link) {
+                var id = link.getAttribute('data-mail-id');
+                if (id) {
+                    window.setActiveMailListItem(id);
+                }
+            }
+        });
+
+        // Onizleme penceresini kapatip tam genislikte gruplu listeye geri donmek
+        // icin. Kapanis ani hissettirmesin diye once onizleme panelini soldururuz
+        // (CSS transition), asil DOM/sinif degisiklikleri o solma bittikten sonra
+        // uygulanir.
+        window.closeMailPreview = function () {
+            var pane = document.querySelector('.mail-preview-pane');
+            if (pane) {
+                pane.classList.add('mail-preview-pane-closing');
+            }
+
+            setTimeout(function () {
+                var app = document.querySelector('.mail-app');
+                if (app) {
+                    app.classList.add('mail-app-assigned-initial');
+                }
+
+                var previewFrame = document.querySelector('.mail-preview-pane iframe[name="mailFrame"]');
+                if (previewFrame) {
+                    previewFrame.style.display = 'none';
+                    previewFrame.src = 'about:blank';
+                }
+                var previewEmpty = document.querySelector('.mail-preview-empty');
+                if (previewEmpty) {
+                    previewEmpty.style.display = '';
+                }
+
+                document.querySelectorAll('.mail-list-item.active').forEach(function (activeLink) {
+                    activeLink.classList.remove('active');
+                    var oldWrap = activeLink.closest('.task-row-wrap');
+                    if (oldWrap) {
+                        oldWrap.classList.remove('active');
+                    }
+                });
+
+                if (pane) {
+                    pane.classList.remove('mail-preview-pane-closing');
+                }
+            }, 220);
+        };
+
+        var previewCloseBtn = document.getElementById('assignedPreviewClose');
+        if (previewCloseBtn) {
+            previewCloseBtn.addEventListener('click', function () {
+                window.closeMailPreview();
+            });
+        }
+
+        document.addEventListener('click', function (ev) {
+            var btn = ev.target.closest('.mail-item-draft-delete');
+            if (!btn) {
+                return;
+            }
+            ev.preventDefault();
+            ev.stopPropagation();
+            UiDialog.confirm({
+                title: 'Taslağı sil',
+                message: 'Bu maile bağlı taslak silinecek. Mailin kendisi silinmez.',
+                confirmText: 'Taslağı Sil',
+                tone: 'danger'
+            }).then(function (ok) {
+                if (!ok) {
+                    return;
+                }
+                var form = document.getElementById('clearMailDraftForm');
+                form.action = btn.dataset.url;
+                form.submit();
+            });
+        });
+
+        // ---- "Sadece Benim" filtresi (Kapatılmış/Gönderilenler): tam sayfa
+        // yenilemek yerine sadece mail-list-pane'i AJAX ile getirip degistirir;
+        // bekleme sirasinda listenin uzerinde bir loader gosterilir. Delege
+        // dinleyici kullanilir cunku her degisimde toggle'in kendisi de
+        // (sunucudan gelen yeni durumla) yeniden olusturulur.
+        document.addEventListener('click', function (ev) {
+            var toggle = ev.target.closest('.mail-list-filter-toggle');
+            if (!toggle) {
+                return;
+            }
+
+            ev.preventDefault();
+
+            var pane = document.querySelector('.mail-list-pane');
+            if (!pane || pane.classList.contains('mail-list-pane-loading')) {
+                return;
+            }
+
+            var url = toggle.getAttribute('href');
+            pane.classList.add('mail-list-pane-loading');
+            var spinner = document.createElement('div');
+            spinner.className = 'mail-list-pane-spinner';
+            spinner.innerHTML = '<div class="spinner"></div>';
+            pane.appendChild(spinner);
+
+            fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+                .then(function (r) {
+                    if (!r.ok) {
+                        throw new Error('mail-list-pane-fetch-failed');
+                    }
+                    return r.text();
+                })
+                .then(function (html) {
+                    pane.innerHTML = html;
+                    pane.classList.remove('mail-list-pane-loading');
+                    window.history.replaceState({}, '', url);
+                    if (window.closeMailPreview) {
+                        window.closeMailPreview();
+                    }
+                    applyReadFilter();
+                })
+                .catch(function () {
+                    // AJAX basarisiz olursa, eski tam sayfa yenileme davranisina geri don.
+                    window.location.href = url;
+                });
+        });
+
+        // ---- Yeni mail geldiginde listeyi kendiliginden tazele ----
+        // Mail sayfasi artik acilirken IMAP senkronizasyonunu BEKLEMIYOR (eskiden her
+        // klasor tiklamasi tam bir Gmail turunu bekliyordu). Bunun yerine sunucu
+        // senkronizasyonu arka planda yapiyor; burada sadece ucuz bir surum yoklamasi
+        // yapip yeni oge geldiyse liste panelini sessizce yeniliyoruz.
+        (function () {
+            var pane = document.querySelector('.mail-list-pane');
+            if (!pane) {
+                return;
+            }
+
+            var knownVersion = null;
+            var inFlight = false;
+
+            function refreshListPane() {
+                var url = window.location.href;
+                fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+                    .then(function (r) { return r.ok ? r.text() : null; })
+                    .then(function (html) {
+                        // Kullanici bu sirada bir seyler seciyorsa listeyi altindan cekmeyelim.
+                        if (!html || document.querySelector('.task-row-checkbox:checked')) {
+                            return;
+                        }
+                        pane.innerHTML = html;
+                        // Yeni gelen satirlara da acik filtre uygulanir; yoksa
+                        // gizlenmesi gereken mailler listeye geri sizardi.
+                        applyReadFilter();
+                    })
+                    .catch(function () { });
+            }
+
+            // Navbar'daki manuel senkronizasyon butonu, yeni mail geldiginde
+            // 5 saniyelik yoklamayi beklemeden listeyi hemen tazeleyebilsin diye
+            // (bkz. _TopBar.cshtml).
+            window.refreshMailListPane = refreshListPane;
+
+            function poll() {
+                if (inFlight || document.hidden) {
+                    return;
+                }
+                inFlight = true;
+                fetch('/Mail/SyncStatus', { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+                    .then(function (r) { return r.ok ? r.json() : null; })
+                    .then(function (data) {
+                        if (!data) {
+                            return;
+                        }
+                        if (knownVersion === null) {
+                            knownVersion = data.version;
+                        } else if (data.version !== knownVersion) {
+                            knownVersion = data.version;
+                            refreshListPane();
+                        }
+                    })
+                    .catch(function () { })
+                    .finally(function () { inFlight = false; });
+            }
+
+            poll();
+            window.setInterval(poll, 5000);
+        })();
+
+        // ---- Toplu islem: satir secim kutulari + ust arac cubugu ----
+        // Liste basligindaki okundu/okunmadi filtresinin durumu (null | 'read' |
+        // 'unread'); asagidaki applyReadFilter yonetir. Panel AJAX ile yenilendiginde
+        // filtre tekrar uygulanabilsin diye burada, panelin disinda tutulur.
+        var activeReadFilter = null;
+
+        function getSelectedTaskIds() {
+            return Array.from(document.querySelectorAll('.task-row-checkbox:checked')).map(function (cb) {
+                return cb.value;
+            });
+        }
+
+        // ---- Bayrak kurallari (sunucu tarafi karsiligi: Models/MailFlagPolicy.cs) ----
+        // 1) Henuz kimseye atanmamis mail "Tamamlandi" olamaz.
+        // 2) Gorev kullanicinin ustunde degilse "Beklemede/Tamamlandi/Spam" isaretlenemez.
+        // Toplu secimde tek bir uygunsuz mail bile varsa secenek inaktiflesir; fareyle
+        // uzerine gelindiginde nedeni tooltip olarak gosterilir.
+        var FLAG_DENY_UNASSIGNED = @Json.Serialize(MailFlagPolicy.UnassignedClosedMessage);
+        var FLAG_DENY_NOT_ASSIGNEE = @Json.Serialize(MailFlagPolicy.NotAssigneeMessage);
+        var FLAG_DENY_OWNER_LOCK = @Json.Serialize(MailFlagPolicy.OwnerLockMessage);
+        var ASSIGNEE_ONLY_FLAGS = ['@MailFlagTypes.Pending', '@MailFlagTypes.Closed', '@MailFlagTypes.Spam'];
+
+        function flagDenyReasonForSelection(flagType) {
+            var boxes = Array.prototype.slice.call(document.querySelectorAll('.task-row-checkbox:checked'));
+            for (var i = 0; i < boxes.length; i++) {
+                var hasAssignment = boxes[i].dataset.hasAssignment === 'true';
+                var isMine = boxes[i].dataset.mine === 'true';
+
+                // Bayragi baskasi koymus ve gorev de bizim ustumuzde degil: hicbir
+                // bayrak degistirilemez (bkz. MailFlagPolicy.IsOwnerLockActive).
+                if (boxes[i].dataset.flagLocked === 'true') {
+                    return FLAG_DENY_OWNER_LOCK;
+                }
+
+                if (!hasAssignment) {
+                    if (flagType === '@MailFlagTypes.Closed') {
+                        return FLAG_DENY_UNASSIGNED;
+                    }
+                } else if (!isMine && ASSIGNEE_ONLY_FLAGS.indexOf(flagType) !== -1) {
+                    return FLAG_DENY_NOT_ASSIGNEE;
+                }
+            }
+            return null;
+        }
+
+        function updateFlagGuards() {
+            document.querySelectorAll('#bulkActionBar [data-flag-guard]').forEach(function (btn) {
+                var reason = flagDenyReasonForSelection(btn.getAttribute('data-flag-guard'));
+                btn.disabled = reason !== null;
+
+                var wrap = btn.closest('form');
+                if (!wrap) {
+                    return;
+                }
+                wrap.classList.toggle('detail-dropdown-item-lock', reason !== null);
+                if (reason) {
+                    wrap.setAttribute('data-lock-tip', reason);
+                } else {
+                    wrap.removeAttribute('data-lock-tip');
+                }
+            });
+        }
+
+        // Detay sayfasindaki "gecerli bayrak" tikinin toplu islem karsiligi: secili
+        // maillerin hepsi ayni bayraktaysa o secenek isaretlenir; secim karisiksa
+        // (farkli bayraklar) hicbiri isaretlenmez.
+        function updateFlagCurrentMarks() {
+            var panel = document.getElementById('bulkFlagPanel');
+            if (!panel) {
+                return;
+            }
+
+            var boxes = Array.prototype.slice.call(document.querySelectorAll('.task-row-checkbox:checked'));
+            var commonFlag = boxes.length > 0 ? boxes[0].dataset.flag : null;
+            for (var i = 1; i < boxes.length; i++) {
+                if (boxes[i].dataset.flag !== commonFlag) {
+                    commonFlag = null;
+                    break;
+                }
+            }
+
+            panel.querySelectorAll('[data-flag-guard]').forEach(function (btn) {
+                var isCurrent = commonFlag !== null && btn.getAttribute('data-flag-guard') === commonFlag;
+                btn.classList.toggle('detail-dropdown-item-current', isCurrent);
+                var check = btn.querySelector('[data-flag-check]');
+                if (check) {
+                    check.style.display = isCurrent ? '' : 'none';
+                }
+            });
+        }
+
+        function updateBulkActionBar() {
+            var bar = document.getElementById('bulkActionBar');
+            if (!bar) {
+                return;
+            }
+            var ids = getSelectedTaskIds();
+            var countEl = document.getElementById('bulkSelectedCount');
+            if (countEl) {
+                countEl.textContent = ids.length;
+            }
+            bar.style.display = ids.length > 0 ? 'flex' : 'none';
+            updateFlagGuards();
+            updateFlagCurrentMarks();
+        }
+
+        // ---- Toplu secim (Tümü/Hiçbiri/Okunanlar/Okunmayanlar) ve okundu filtresi ----
+        // Okundu bilgisi listede zaten var: okunmamis satirlarin bagi "unread"
+        // sinifini tasir (bkz. _TaskRow.cshtml) ve mail acilinca setActiveMailListItem
+        // bu sinifi kaldirir; yani DOM her zaman guncel durumu yansitir.
+        function rowWrapOf(checkbox) {
+            return checkbox.closest('.task-row-wrap');
+        }
+
+        function isRowUnread(checkbox) {
+            var wrap = rowWrapOf(checkbox);
+            return wrap !== null && wrap.querySelector('.mail-list-item.unread') !== null;
+        }
+
+        function isRowVisible(checkbox) {
+            var wrap = rowWrapOf(checkbox);
+            return wrap === null || wrap.style.display !== 'none';
+        }
+
+        function applySelectionMode(mode) {
+            document.querySelectorAll('.task-row-checkbox').forEach(function (cb) {
+                // Filtreyle gizlenmis satirlar secilemez: gorunmeyen maile toplu
+                // islem uygulanmasi kullanici icin surpriz olurdu.
+                if (!isRowVisible(cb)) {
+                    cb.checked = false;
+                    return;
+                }
+
+                if (mode === 'all') {
+                    cb.checked = true;
+                } else if (mode === 'none') {
+                    cb.checked = false;
+                } else if (mode === 'read') {
+                    cb.checked = !isRowUnread(cb);
+                } else if (mode === 'unread') {
+                    cb.checked = isRowUnread(cb);
+                }
+            });
+
+            updateBulkActionBar();
+        }
+
+        // Chip'lerdeki (okunan/okunmayan) sayilar. Sunucudan gelen ilk degerleri
+        // DOM'dan tazeler; bir mail acilinca okunmadi isareti sunucuya gidilmeden
+        // kalktigi icin sayilarin da o anda duzelmesi gerekir. Atanmis klasorunde
+        // ayni mail birden fazla kisi grubunda gorunebildiginden mail Id'lerine
+        // gore tekillestirilir.
+        function updateReadFilterCounts() {
+            var seen = {};
+            var read = 0;
+            var unread = 0;
+
+            document.querySelectorAll('.task-row-wrap').forEach(function (wrap) {
+                var link = wrap.querySelector('.mail-list-item');
+                var id = link ? link.getAttribute('data-mail-id') : null;
+                if (id === null || seen[id]) {
+                    return;
+                }
+                seen[id] = true;
+
+                if (link.classList.contains('unread')) {
+                    unread++;
+                } else {
+                    read++;
+                }
+            });
+
+            var readEl = document.querySelector('[data-read-count="read"]');
+            if (readEl) {
+                readEl.textContent = '(' + read + ')';
+            }
+            var unreadEl = document.querySelector('[data-read-count="unread"]');
+            if (unreadEl) {
+                unreadEl.textContent = '(' + unread + ')';
+            }
+        }
+
+        function applyReadFilter() {
+            document.querySelectorAll('.task-row-checkbox').forEach(function (cb) {
+                var wrap = rowWrapOf(cb);
+                if (!wrap) {
+                    return;
+                }
+
+                var unread = isRowUnread(cb);
+                var visible = activeReadFilter === null || (activeReadFilter === 'unread' ? unread : !unread);
+                wrap.style.display = visible ? '' : 'none';
+                if (!visible) {
+                    cb.checked = false;
+                }
+            });
+
+            // Atanmis klasorunde satirlar kisi gruplari icinde; tamamen bosalan
+            // grubun basligi da gizlenir.
+            document.querySelectorAll('.assigned-user-group').forEach(function (group) {
+                var rows = Array.prototype.slice.call(group.querySelectorAll('.task-row-wrap'));
+                var anyVisible = rows.some(function (wrap) { return wrap.style.display !== 'none'; });
+                group.style.display = anyVisible ? '' : 'none';
+            });
+
+            // Acik filtre, "Sadece Benim" ile ayni sekilde dolu chip olarak isaretlenir.
+            document.querySelectorAll('[data-read-filter]').forEach(function (btn) {
+                btn.classList.toggle('btn-chip-primary', btn.getAttribute('data-read-filter') === activeReadFilter);
+            });
+
+            updateReadFilterCounts();
+            updateBulkActionBar();
+        }
+
+        document.querySelectorAll('#bulkActionBar [data-select-mode]').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                applySelectionMode(btn.getAttribute('data-select-mode'));
+            });
+        });
+
+        // Delege dinleyici: filtre chip'leri artik liste panelinin basliginda ve o
+        // panel AJAX ile (filtre degisimi / yeni mail tazelemesi) bastan olusuyor.
+        document.addEventListener('click', function (ev) {
+            var btn = ev.target.closest('[data-read-filter]');
+            if (!btn) {
+                return;
+            }
+
+            var mode = btn.getAttribute('data-read-filter');
+            // Ayni chip'e tekrar basmak filtreyi kaldirir.
+            activeReadFilter = activeReadFilter === mode ? null : mode;
+            applyReadFilter();
+        });
+
+        document.addEventListener('click', function (ev) {
+            if (ev.target.classList.contains('task-row-checkbox')) {
+                ev.stopPropagation();
+            }
+        });
+        document.addEventListener('change', function (ev) {
+            if (ev.target.classList.contains('task-row-checkbox')) {
+                updateBulkActionBar();
+            }
+        });
+
+        var bulkClearBtn = document.getElementById('bulkClearSelection');
+        if (bulkClearBtn) {
+            bulkClearBtn.addEventListener('click', function () {
+                document.querySelectorAll('.task-row-checkbox:checked').forEach(function (cb) {
+                    cb.checked = false;
+                });
+                updateBulkActionBar();
+            });
+        }
+
+        // Gonderilmeden hemen once, o an isaretli mail Id'lerini forma "ids" olarak ekler.
+        document.querySelectorAll('.bulk-form').forEach(function (form) {
+            form.addEventListener('submit', function (ev) {
+                var ids = getSelectedTaskIds();
+                if (ids.length === 0) {
+                    ev.preventDefault();
+                    return;
+                }
+                form.querySelectorAll('input[name="ids"]').forEach(function (i) { i.remove(); });
+                ids.forEach(function (id) {
+                    var input = document.createElement('input');
+                    input.type = 'hidden';
+                    input.name = 'ids';
+                    input.value = id;
+                    form.appendChild(input);
+                });
+            });
+        });
+
+        // Ust arac cubugundaki dropdown'lar (atama/bayrak/etiket/diger) icin ac-kapa.
+        document.querySelectorAll('#bulkActionBar [data-dropdown-trigger]').forEach(function (trigger) {
+            var wrapper = trigger.closest('.detail-dropdown');
+            var panel = wrapper.querySelector('[data-dropdown-panel]');
+            trigger.addEventListener('click', function (ev) {
+                ev.stopPropagation();
+                var opening = !panel.classList.contains('open');
+                document.querySelectorAll('#bulkActionBar .detail-dropdown-panel.open').forEach(function (p) {
+                    p.classList.remove('open');
+                });
+                panel.classList.toggle('open', opening);
+            });
+        });
+        document.addEventListener('click', function (ev) {
+            document.querySelectorAll('#bulkActionBar .detail-dropdown').forEach(function (wrapper) {
+                if (!wrapper.contains(ev.target)) {
+                    var panel = wrapper.querySelector('[data-dropdown-panel]');
+                    if (panel) {
+                        panel.classList.remove('open');
+                    }
+                }
+            });
+        });
+
+        // Etiket dropdown'unda "Belirteç Ekle" / "Tag Ekle" sekmeleri.
+        document.querySelectorAll('#bulkActionBar [data-tag-tab]').forEach(function (tab) {
+            tab.addEventListener('click', function () {
+                var group = tab.closest('.detail-dropdown-panel');
+                group.querySelectorAll('[data-tag-tab]').forEach(function (t) { t.classList.remove('active'); });
+                tab.classList.add('active');
+                var target = tab.getAttribute('data-tag-tab');
+                group.querySelectorAll('[data-tag-panel]').forEach(function (p) {
+                    p.style.display = p.getAttribute('data-tag-panel') === target ? '' : 'none';
+                });
+            });
+        });
+
+        // Toplu tag ekleme: renk sec + metin gir + "Ekle" ile pending listeye ekle,
+        // "Kaydet" tum seti (secili tum maillere) tek seferde gonderir.
+        (function () {
+            var swatchesWrap = document.getElementById('bulkTagSwatches');
+            var textInput = document.getElementById('bulkTagText');
+            var addBtn = document.getElementById('bulkTagAdd');
+            var list = document.getElementById('bulkTagList');
+            var hiddenWrap = document.getElementById('bulkTagHiddenInputs');
+            if (!swatchesWrap || !textInput || !addBtn || !list || !hiddenWrap) {
+                return;
+            }
+
+            var selectedColor = 'gray';
+            swatchesWrap.querySelectorAll('.detail-tag-builder-swatch').forEach(function (swatch) {
+                swatch.addEventListener('click', function () {
+                    swatchesWrap.querySelectorAll('.detail-tag-builder-swatch').forEach(function (s) { s.classList.remove('selected'); });
+                    swatch.classList.add('selected');
+                    selectedColor = swatch.getAttribute('data-color-key');
+                });
+            });
+
+            function renderHiddenInputs() {
+                hiddenWrap.innerHTML = '';
+                list.querySelectorAll('.detail-tag-builder-chip').forEach(function (chip) {
+                    var textField = document.createElement('input');
+                    textField.type = 'hidden';
+                    textField.name = 'tagTexts';
+                    textField.value = chip.getAttribute('data-text');
+                    hiddenWrap.appendChild(textField);
+
+                    var colorField = document.createElement('input');
+                    colorField.type = 'hidden';
+                    colorField.name = 'tagColors';
+                    colorField.value = chip.getAttribute('data-color');
+                    hiddenWrap.appendChild(colorField);
+                });
+            }
+
+            function addChip(text, colorKey) {
+                var chip = document.createElement('span');
+                chip.className = 'detail-tag-builder-chip tag-chip-' + colorKey;
+                chip.setAttribute('data-text', text);
+                chip.setAttribute('data-color', colorKey);
+                chip.textContent = text;
+
+                var remove = document.createElement('button');
+                remove.type = 'button';
+                remove.className = 'detail-tag-builder-chip-remove';
+                remove.textContent = '×';
+                remove.addEventListener('click', function () {
+                    chip.remove();
+                    renderHiddenInputs();
+                });
+                chip.appendChild(remove);
+
+                list.appendChild(chip);
+                renderHiddenInputs();
+            }
+
+            addBtn.addEventListener('click', function () {
+                var text = textInput.value.trim();
+                if (!text) {
+                    return;
+                }
+                addChip(text, selectedColor);
+                textInput.value = '';
+                textInput.focus();
+            });
+        })();
+    });
+</script>
+
+@if (Model.Folder == MailFolders.Drafts)
+{
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            var toggle = document.getElementById('newTemplateToggle');
+            var cancel = document.getElementById('newTemplateCancel');
+            var form = document.getElementById('newTemplateForm');
+            if (toggle && cancel && form) {
+                toggle.addEventListener('click', function () {
+                    form.style.display = form.style.display === 'none' ? '' : 'none';
+                });
+                cancel.addEventListener('click', function () {
+                    form.reset();
+                    form.style.display = 'none';
+                });
+            }
+
+            document.querySelectorAll('.draft-template-delete-trigger').forEach(function (btn) {
+                btn.addEventListener('click', function (ev) {
+                    ev.preventDefault();
+                    ev.stopPropagation();
+                    UiDialog.confirm({
+                        title: 'Şablonu sil',
+                        message: 'Bu taslak şablonu kalıcı olarak silinecek.',
+                        confirmText: 'Sil',
+                        tone: 'danger'
+                    }).then(function (ok) {
+                        if (!ok) {
+                            return;
+                        }
+                        var deleteForm = btn.closest('details').querySelector('.draft-template-delete-form');
+                        if (deleteForm) {
+                            deleteForm.submit();
+                        }
+                    });
+                });
+            });
+        });
+    </script>
+}

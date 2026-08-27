@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//c/Users/TEST/AppData/Local/Temp/claude/**)",
+      "Read(//c/Users/TEST/Downloads/**)",
+      "Read(//c/Users/TEST/Pictures/**)",
+      "Read(//c/Users/TEST/Desktop/**)"
+    ]
+  }
+}

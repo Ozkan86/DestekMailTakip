@@ -1,0 +1,8 @@
+@{
+    Layout = "_FrameLayout";
+    var folder = ViewData["Folder"] as string ?? MailFolders.Unassigned;
+}
+
+<script>
+    window.parent.location.href = '@Html.Raw(Url.Action("Index", "Mail", new { folder }))';
+</script>

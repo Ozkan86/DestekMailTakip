@@ -1,0 +1,35 @@
+@{
+    ViewData["Title"] = "Erişim Reddedildi";
+    Layout = "_AuthLayout";
+}
+
+<div class="auth-wrapper">
+    <div class="auth-brand-panel">
+        <div class="auth-brand-logo">
+            <img src="~/assets/creamobile-logo.png" alt="Creamobile" />
+        </div>
+
+        <div class="auth-brand-copy">
+            <h1>Her zaman elinden gelenin en iyisini yap</h1>
+        </div>
+
+        <div class="auth-brand-footer">
+            &copy; @DateTime.Now.Year Creamobile &mdash; Destek Mail Sistemi
+        </div>
+    </div>
+
+    <div class="auth-form-panel">
+        <div class="auth-outer-card">
+            <div class="auth-icon-badge">
+                <img src="~/assets/creamobile-icon.png" alt="Creamobile" />
+            </div>
+
+            <div class="auth-inner-card">
+                <h2>Erişim Reddedildi</h2>
+                <p class="subtitle">Hesabınızın bu sayfayı görüntüleme yetkisi yok.</p>
+
+                <a class="auth-btn-primary" style="display:block; text-align:center; text-decoration:none;" asp-controller="Account" asp-action="Login">Giriş Sayfasına Dön</a>
+            </div>
+        </div>
+    </div>
+</div>

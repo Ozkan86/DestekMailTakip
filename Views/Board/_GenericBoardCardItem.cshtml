@@ -1,0 +1,173 @@
+@model (BoardCard Card, int BoardId, BoardTemplateDefinition Template, bool IsEngineer, bool IsCustomer, bool IsReadOnly, bool IsAdmin, string CurrentUserId)
+@inject IUserAvatarColorService AvatarColors
+@{
+    var card = Model.Card;
+    var boardId = Model.BoardId;
+    var template = Model.Template;
+    var isEngineer = Model.IsEngineer;
+    var isCustomer = Model.IsCustomer;
+    var isAdmin = Model.IsAdmin;
+    var currentUserId = Model.CurrentUserId;
+    var actorRole = isEngineer ? BoardAddCardRole.Engineer : (isCustomer ? BoardAddCardRole.Customer : BoardAddCardRole.None);
+    var isReadOnly = Model.IsReadOnly;
+
+    var isSprintDoneCard = template.HasSprintRounds && card.ListKey == "sprint-done";
+    var candidateTransitions = isSprintDoneCard
+        ? new List<BoardListTransition>()
+        : template.Transitions
+            .Where(t => (t.FromListKey == "*" || t.FromListKey == card.ListKey) && t.AllowedRole == actorRole)
+            .ToList();
+
+    // Klasik'teki Todo->Test akisinin (once uzerine al, sonra siradaki listeye
+    // tasima secenegi cikar) tum sablonlara genellenmis hali: mühendis
+    // rolündeki gecisler, kart "uzerine alinana" kadar gosterilmez. Admin,
+    // atanmis olmasi sartiyla (kendisine atanmis olmasi sart olmaksizin) tasiyabilir.
+    var claimEligibleHere = isEngineer && !isReadOnly && actorRole == BoardAddCardRole.Engineer && candidateTransitions.Any();
+    var showClaimIcon = claimEligibleHere && !card.IsAssigned;
+    var isMine = card.IsAssigned && card.AssignedUserId == currentUserId;
+    var showReleaseIcon = claimEligibleHere && isMine;
+    var releaseActive = showReleaseIcon && card.ListKey == card.AssignedListKey;
+    var canUseEngineerTransitions = actorRole != BoardAddCardRole.Engineer
+        || (card.IsAssigned && (isAdmin || card.AssignedUserId == currentUserId));
+    var transitions = canUseEngineerTransitions ? candidateTransitions : new List<BoardListTransition>();
+
+    var dragAttributes = (!isReadOnly && transitions.Any())
+        ? $"draggable=\"true\" data-drag-role=\"generic\""
+        : string.Empty;
+}
+<div class="board-card@(card.HasCover ? " has-cover" : "")@((showClaimIcon || showReleaseIcon) ? " has-claim-action" : "")" data-card-id="@card.Id" data-board-id="@boardId" data-list-key="@card.ListKey" @Html.Raw(dragAttributes)>
+    @if (!isReadOnly)
+    {
+        <button type="button" class="board-card-edit-btn" data-card-id="@card.Id" data-board-id="@boardId" title="Kartı düzenle">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" /></svg>
+        </button>
+    }
+
+    @if (showClaimIcon)
+    {
+        <form asp-action="AssignToMe" asp-route-cardId="@card.Id" asp-route-boardId="@boardId" method="post" class="board-card-claim-form js-generic-move-form">
+            <button type="submit" class="board-card-claim-btn" title="Üstüme Al">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><line x1="19" y1="8" x2="19" y2="14" /><line x1="16" y1="11" x2="22" y2="11" /></svg>
+            </button>
+        </form>
+    }
+    else if (showReleaseIcon)
+    {
+        <form asp-action="ReleaseFromMe" asp-route-cardId="@card.Id" asp-route-boardId="@boardId" method="post" class="board-card-claim-form js-generic-move-form">
+            <button type="submit" class="board-card-claim-btn" @(releaseActive ? "" : "disabled")
+                    title="@(releaseActive ? "Üstümden Bırak" : "Kartı sadece ilk üzerine aldığınız listede bırakabilirsiniz")">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><line x1="16" y1="11" x2="22" y2="11" /></svg>
+            </button>
+        </form>
+    }
+
+    @if (card.IsAssigned)
+    {
+        <span class="board-card-assignee-tooltip">
+            <span class="avatar-circle" style="background:@AvatarColors.ColorFor(card.AssignedUserId, card.AssignedUserDisplayName)">@AvatarHelper.Initials(card.AssignedUserDisplayName, card.AssignedUserDisplayName)</span>
+            @card.AssignedUserDisplayName
+        </span>
+    }
+
+    @if (card.CoverImagePath is not null)
+    {
+        <div class="board-card-cover board-card-cover-image" style="background-image:url('@card.CoverImagePath');"></div>
+    }
+    else if (card.CoverColor is not null)
+    {
+        <div class="board-card-cover board-card-cover-color" style="background:@card.CoverColor;"></div>
+    }
+
+    @if (card.Labels.Any())
+    {
+        <div class="board-card-labels">
+            @foreach (var cardLabel in card.Labels)
+            {
+                <span class="board-card-label-strip" data-label-id="@cardLabel.Id" style="background:@cardLabel.Color;">@cardLabel.Name</span>
+            }
+        </div>
+    }
+
+    <div class="board-card-title">@card.Title</div>
+    @if (card.DescriptionPreview is not null)
+    {
+        <div class="board-card-desc">@card.DescriptionPreview</div>
+    }
+    <div class="board-card-meta">
+        <span class="status-badge status-badge-unassigned">@card.CreatedByDisplayName</span>
+        @if (card.RejectedCount > 0)
+        {
+            <span class="status-badge status-badge-pending" title="@card.LastRejectionNote">Reddedildi (@card.RejectedCount)</span>
+        }
+        @if (isSprintDoneCard && card.ApprovalStatus is not null)
+        {
+            var approvalLabel = card.ApprovalStatus == "Approved" ? "Onaylandı" : "Reddedildi";
+            var approvalClass = card.ApprovalStatus == "Approved" ? "status-badge-assigned" : "status-badge-pending";
+            <span class="status-badge @approvalClass">@approvalLabel</span>
+        }
+    </div>
+
+    @if (!isReadOnly && isSprintDoneCard && isCustomer && card.ApprovalStatus is null)
+    {
+        <div class="board-card-actions">
+            <form asp-action="SetCardApproval" asp-route-boardId="@boardId" asp-route-cardId="@card.Id" method="post" class="js-generic-move-form">
+                <input type="hidden" name="status" value="Approved" />
+                <button type="submit" class="btn-chip btn-chip-primary">Onayla</button>
+            </form>
+            @* Bkz. _BoardCardItem.cshtml: gerekce kartin icinde degil, ortak
+               pencerede soruluyor. *@
+            <form asp-action="SetCardApproval" asp-route-boardId="@boardId" asp-route-cardId="@card.Id" method="post" class="js-generic-move-form"
+                  data-ui-prompt-title="Kartı reddet"
+                  data-ui-prompt="Kart reddedilecek. Neyin düzeltilmesi gerektiğini kısaca yazın."
+                  data-ui-prompt-label="Reddetme sebebi"
+                  data-ui-prompt-placeholder="Örn. Test ortamında hata devam ediyor."
+                  data-ui-prompt-required-message="Reddetmek için bir açıklama girmelisiniz."
+                  data-ui-prompt-field="note"
+                  data-ui-prompt-ok="Reddet"
+                  data-ui-prompt-tone="warning">
+                <input type="hidden" name="status" value="Rejected" />
+                <input type="hidden" name="note" />
+                <button type="submit" class="btn-chip btn-chip-danger">Reddet</button>
+            </form>
+        </div>
+    }
+    else if (!isReadOnly && transitions.Any())
+    {
+        <div class="board-card-actions">
+            @foreach (var transition in transitions)
+            {
+                var targetList = template.GetList(transition.ToListKey);
+                var buttonClass = transition.IsApproval ? "btn-chip btn-chip-primary" : (transition.IsRejection ? "btn-chip btn-chip-danger" : "btn-chip");
+
+                if (transition.RequiresNote)
+                {
+                    var targetLabel = targetList?.Label ?? transition.ToListKey;
+                    var isRejection = transition.IsRejection;
+
+                    <form asp-action="MoveCard" asp-route-boardId="@boardId" asp-route-cardId="@card.Id" method="post" class="js-generic-move-form"
+                          data-ui-prompt-title="@(isRejection ? "Kartı reddet" : "Taşıma gerekçesi")"
+                          data-ui-prompt="Kart &quot;@targetLabel&quot; listesine taşınacak. Bu taşıma için bir açıklama gerekiyor."
+                          data-ui-prompt-label="Açıklama / gerekçe"
+                          data-ui-prompt-placeholder="Örn. Kod incelemesi tamamlandı, teste hazır."
+                          data-ui-prompt-required-message="Bu taşıma için bir açıklama girmelisiniz."
+                          data-ui-prompt-field="note"
+                          data-ui-prompt-ok="@(isRejection ? "Reddet" : "Taşı")"
+                          data-ui-prompt-tone="@(isRejection ? "warning" : "primary")">
+                        <input type="hidden" name="targetListKey" value="@transition.ToListKey" />
+                        <input type="hidden" name="targetPosition" value="1" />
+                        <input type="hidden" name="note" />
+                        <button type="submit" class="@buttonClass">@targetLabel</button>
+                    </form>
+                }
+                else
+                {
+                    <form asp-action="MoveCard" asp-route-boardId="@boardId" asp-route-cardId="@card.Id" method="post" class="js-generic-move-form">
+                        <input type="hidden" name="targetListKey" value="@transition.ToListKey" />
+                        <input type="hidden" name="targetPosition" value="1" />
+                        <button type="submit" class="@buttonClass">@(targetList?.Label ?? transition.ToListKey)</button>
+                    </form>
+                }
+            }
+        </div>
+    }
+</div>

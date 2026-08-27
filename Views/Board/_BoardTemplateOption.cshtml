@@ -1,0 +1,25 @@
+@model (BoardTemplateDefinition Template, bool Selected, bool AsLink)
+@{
+    var template = Model.Template;
+}
+@if (Model.AsLink)
+{
+    <a class="board-template-card@(Model.Selected ? " selected" : "")" asp-action="Create" asp-route-template="@template.Key">
+        <div class="board-template-thumb" data-template-key="@template.Key">
+            <img src="~/assets/board-templates/@(template.Key).svg" alt="@template.Name" />
+        </div>
+        <div class="board-template-card-name">@template.Name</div>
+        <div class="board-template-card-desc">@template.Description</div>
+    </a>
+}
+else
+{
+    <label class="board-template-card@(Model.Selected ? " selected" : "")">
+        <input type="radio" name="TemplateKey" value="@template.Key" class="board-template-radio" @(Model.Selected ? "checked" : "") />
+        <div class="board-template-thumb" data-template-key="@template.Key">
+            <img src="~/assets/board-templates/@(template.Key).svg" alt="@template.Name" />
+        </div>
+        <div class="board-template-card-name">@template.Name</div>
+        <div class="board-template-card-desc">@template.Description</div>
+    </label>
+}

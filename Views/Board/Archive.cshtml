@@ -1,0 +1,61 @@
+@model List<BoardCard>
+@{
+    var isCustomer = User.IsInRole("Customer");
+    Layout = isCustomer ? "_BoardLayout" : "_Layout";
+    ViewData["Title"] = "Arşiv Kutusu";
+}
+
+<div class="board-page-header">
+    <h2>Arşiv Kutusu</h2>
+    <a class="board-header-btn board-header-btn-back" asp-action="Index" title="Pano listesine dön">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12" /><polyline points="12 19 5 12 12 5" /></svg>
+        Panolar
+    </a>
+</div>
+
+@if (!Model.Any())
+{
+    <p class="text-muted">Arşivlenmiş kart yok.</p>
+}
+else
+{
+    <div class="board-archive-list">
+        @foreach (var card in Model)
+        {
+            <div class="board-archive-item">
+                @if (card.CoverImagePath is not null)
+                {
+                    <div class="board-archive-item-cover" style="background-image:url('@card.CoverImagePath');"></div>
+                }
+                else if (card.CoverColor is not null)
+                {
+                    <div class="board-archive-item-cover" style="background:@card.CoverColor;"></div>
+                }
+
+                <div class="board-archive-item-body">
+                    @if (card.Labels.Any())
+                    {
+                        <div class="board-card-labels">
+                            @foreach (var label in card.Labels)
+                            {
+                                <span class="board-card-label-strip" style="background:@label.Color;">@label.Name</span>
+                            }
+                        </div>
+                    }
+                    <div class="board-archive-item-title">@card.Title</div>
+                    @if (!string.IsNullOrWhiteSpace(card.Description))
+                    {
+                        <div class="board-card-desc">@card.Description</div>
+                    }
+                    <div class="board-list-item-meta">
+                        @card.BoardTitle &middot; @(BoardLists.All.FirstOrDefault(l => l.Key == card.ListKey).Label) &middot; Arşivlendi: @card.ArchivedAt?.ToLocalTime().ToString("dd.MM.yyyy HH:mm")
+                    </div>
+                </div>
+
+                <form asp-action="RestoreCard" asp-route-cardId="@card.Id" method="post">
+                    <button type="submit" class="btn-chip btn-chip-primary">Geri Yükle</button>
+                </form>
+            </div>
+        }
+    </div>
+}

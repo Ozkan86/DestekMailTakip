@@ -1,0 +1,64 @@
+## .NET / Visual Studio derleme ciktilari
+[Bb]in/
+[Oo]bj/
+[Dd]ebug/
+[Rr]elease/
+x64/
+x86/
+[Ll]og/
+[Ll]ogs/
+
+## Visual Studio / VS Code kullanici dosyalari
+.vs/
+.vscode/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+*.userprefs
+
+## Rider / JetBrains
+.idea/
+*.sln.iml
+
+## NuGet
+*.nupkg
+*.snupkg
+**/packages/*
+!**/packages/build/
+project.lock.json
+project.fragment.lock.json
+artifacts/
+
+## EF Core
+*.mdf
+*.ldf
+*.ndf
+
+## Test sonuclari
+[Tt]est[Rr]esult*/
+*.trx
+*.coverage
+*.coveragexml
+
+## ASP.NET Core gizli ayarlar / gecici dosyalar
+*.pfx
+*.publishsettings
+appsettings.*.local.json
+appsettings.Development.json
+secrets.json
+
+## Runtime'da olusan, kaynak kod olmayan dosyalar
+/wwwroot/uploads/**
+!/wwwroot/uploads/.gitkeep
+
+## Isletim sistemi dosyalari
+.DS_Store
+Thumbs.db
+desktop.ini
+
+## Diger
+*.log
+*.tmp
+*.bak
+*.swp

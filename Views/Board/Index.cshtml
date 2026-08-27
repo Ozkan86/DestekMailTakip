@@ -1,0 +1,431 @@
+@model List<Board>
+@inject IUserAvatarColorService AvatarColors
+@{
+    var isCustomer = User.IsInRole("Customer");
+    Layout = isCustomer ? "_BoardLayout" : "_Layout";
+    ViewData["Title"] = isCustomer ? "Panolarım" : "Panolar";
+    var currentUserId = ViewData["CurrentUserId"] as string ?? string.Empty;
+    var customers = ViewData["Customers"] as List<ApplicationUser> ?? new List<ApplicationUser>();
+}
+
+<div class="board-page-header">
+    <h2>@(isCustomer ? "Panolarım" : "Panolar")</h2>
+    <div class="board-page-header-actions">
+        @if (!isCustomer)
+        {
+            <a class="board-header-btn" asp-action="MyTasks" title="Üstünüze aldığınız pano görevleri">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M9 2h6a1 1 0 0 1 1 1v2H8V3a1 1 0 0 1 1-1Z" /><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" /><polyline points="9 14 11 16 15 11" /></svg>
+                Pano Görevlerim
+            </a>
+            @if (customers.Any())
+            {
+                <button type="button" id="customerFilterOpenBtn" class="board-header-btn" title="Panoları müşteriye göre filtrele">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" /></svg>
+                    Müşteriye Göre Filtrele
+                    <span id="customerFilterCount" class="customer-filter-count" style="display:none;"></span>
+                </button>
+            }
+        }
+        <a class="board-header-btn" asp-action="Archive" title="Arşivlenmiş kartlar">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="5" rx="1" /><path d="M4 9v10a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1V9" /><line x1="10" y1="13.5" x2="14" y2="13.5" /></svg>
+            Arşiv Kutusu
+        </a>
+        @if (isCustomer)
+        {
+            <a class="board-header-btn board-header-btn-primary" asp-action="Create" title="Yeni pano oluştur">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" /><line x1="12" y1="8" x2="12" y2="16" /><line x1="8" y1="12" x2="16" y2="12" /></svg>
+                Yeni Pano
+            </a>
+        }
+    </div>
+</div>
+
+@if (!isCustomer && customers.Any())
+{
+    <div id="customerFilterBackdrop" class="customer-filter-backdrop" style="display:none;">
+        <div class="customer-filter-modal" role="dialog" aria-modal="true" aria-label="Müşteriye göre filtrele">
+            <div class="customer-filter-header">
+                <h3>Müşteriye Göre Filtrele</h3>
+                <button type="button" id="customerFilterCloseBtn" class="board-card-detail-close-btn" style="position:static;" title="Kapat">&times;</button>
+            </div>
+            <div class="customer-filter-search-wrap">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" class="customer-filter-search-icon"><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></svg>
+                <input type="text" id="customerFilterSearch" class="customer-filter-search-input" placeholder="Müşteri ara" autocomplete="off" />
+            </div>
+            <div class="customer-filter-list">
+                @foreach (var customer in customers)
+                {
+                    <label class="customer-filter-row" data-name="@customer.DisplayName.ToLowerInvariant()">
+                        <input type="checkbox" class="customer-filter-checkbox" value="@customer.Id" />
+                        <span class="avatar-circle" style="background:@AvatarColors.ColorFor(customer.Id, customer.DisplayName)">@AvatarHelper.Initials(customer.DisplayName, customer.Email)</span>
+                        <span class="customer-filter-row-name">@customer.DisplayName</span>
+                    </label>
+                }
+                <p id="customerFilterNoResults" class="customer-filter-empty" style="display:none;">Eşleşen müşteri yok.</p>
+            </div>
+            <div class="customer-filter-footer">
+                <button type="button" id="customerFilterClearBtn" class="btn-chip">Filtreyi Temizle</button>
+                <button type="button" id="customerFilterApplyBtn" class="btn-chip btn-chip-primary">Uygula</button>
+            </div>
+        </div>
+    </div>
+}
+
+@if (!Model.Any())
+{
+    <p class="text-muted">Henüz pano yok.</p>
+}
+else
+{
+    var customerSummary = ViewData["CustomerSummary"] as CustomerBoardSummary;
+    <div class="board-index-layout">
+    <div class="board-index-main">
+    <div class="board-list">
+        @foreach (var board in Model)
+        {
+            var isOwner = isCustomer && string.Equals(board.CreatedByUserId, currentUserId, StringComparison.Ordinal);
+            var canDelete = isOwner || !isCustomer;
+
+            <div class="board-list-item" data-owner-id="@board.CreatedByUserId">
+                <a class="board-list-item-link" asp-action="Details" asp-route-id="@board.Id">
+                    <div>
+                        <div class="board-list-item-title">@board.Title</div>
+                        <div class="board-list-item-meta">@board.CreatedByDisplayName &middot; @board.CreatedAt.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</div>
+                    </div>
+                </a>
+
+                <div class="board-list-item-actions">
+                    @if (isOwner || canDelete)
+                    {
+                        <details class="board-list-item-menu">
+                            <summary class="board-list-item-menu-trigger" title="Diğer seçenekler">&#8942;</summary>
+                            <div class="board-list-item-menu-panel">
+                                @if (isOwner)
+                                {
+                                    <details class="board-list-item-submenu">
+                                        <summary class="board-list-item-menu-item">Yeniden Adlandır</summary>
+                                        <form asp-action="RenameBoard" asp-route-boardId="@board.Id" method="post" class="board-rename-form">
+                                            @Html.AntiForgeryToken()
+                                            <input type="text" name="title" value="@board.Title" maxlength="300" required class="form-control" />
+                                            <button type="submit" class="btn-chip btn-chip-primary">Kaydet</button>
+                                        </form>
+                                    </details>
+
+                                    <details class="board-list-item-submenu">
+                                        <summary class="board-list-item-menu-item">Yetkileri Düzenle</summary>
+                                        <div class="board-list-item-authorize-panel">
+                                            <div class="board-authorized-emails-title">Yetkili e-postalar</div>
+                                            <div class="board-authorized-emails-container">
+                                                <partial name="_AuthorizedEmailsList" model="(board.Id, board.AuthorizedEmails)" />
+                                            </div>
+
+                                            <form asp-action="AddAuthorizedEmails" asp-route-boardId="@board.Id" method="post" class="board-authorize-add-form">
+                                                @Html.AntiForgeryToken()
+                                                <partial name="_EmailChipWidget" model="@("authorizedEmailsRaw")" />
+                                                <button type="submit" class="btn-chip btn-chip-primary">Ekle</button>
+                                            </form>
+                                        </div>
+                                    </details>
+                                }
+
+                                @if (!isCustomer)
+                                {
+                                    <details class="board-list-item-submenu board-view-authorizations-details" data-board-id="@board.Id">
+                                        <summary class="board-list-item-menu-item">Yetkileri Görüntüle</summary>
+                                        <div class="board-list-item-authorize-panel board-view-authorizations-body">
+                                            <div class="board-view-authorizations-loading">Yükleniyor...</div>
+                                        </div>
+                                    </details>
+                                }
+
+                                @if (canDelete)
+                                {
+                                    <form asp-action="DeleteBoard" asp-route-boardId="@board.Id" method="post"
+                                          data-ui-confirm-title="Panoyu sil"
+                                          data-ui-confirm="&quot;@board.Title&quot; panosu ve içindeki tüm kartlar silinecek. Bu işlem geri alınamaz."
+                                          data-ui-confirm-ok="Panoyu Sil"
+                                          data-ui-confirm-tone="danger">
+                                        @Html.AntiForgeryToken()
+                                        <button type="submit" class="board-list-item-menu-item board-list-item-menu-item-danger" title="Panoyu sil">Panoyu Sil</button>
+                                    </form>
+                                }
+                            </div>
+                        </details>
+                    }
+
+                    <a class="board-list-item-caret" asp-action="Details" asp-route-id="@board.Id" aria-label="Panoyu aç" title="Panoyu aç">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" style="width:18px;height:18px;"><polyline points="9 18 15 12 9 6" /></svg>
+                    </a>
+                </div>
+            </div>
+        }
+    </div>
+    <p id="customerFilterNoBoards" class="text-muted" style="display:none;">Seçilen müşteri(ler)e ait pano yok.</p>
+    </div>
+
+    @if (isCustomer && customerSummary is not null)
+    {
+        <aside class="board-stats-sidebar">
+            <partial name="_BoardStatsWidget" model="customerSummary" />
+        </aside>
+    }
+    </div>
+}
+
+@if (isCustomer)
+{
+    <div class="board-page-header" style="margin-top:32px;">
+        <h2>Pano Şablonlarım</h2>
+    </div>
+    <div class="board-template-grid">
+        @foreach (var template in BoardTemplates.All.Values)
+        {
+            <div class="board-template-card-wrap">
+                <partial name="_BoardTemplateOption" model="(template, false, true)" />
+                <form asp-action="StartPreview" method="post" class="board-template-preview-form">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="templateKey" value="@template.Key" />
+                    <button type="submit" class="board-template-preview-btn" title="Bu şablonu önizle">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8Z" />
+                            <circle cx="12" cy="12" r="3" />
+                        </svg>
+                    </button>
+                </form>
+            </div>
+        }
+    </div>
+}
+
+@section Scripts {
+    <script src="~/js/board-email-chip-input.js" asp-append-version="true"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            // Bir panonun "..." menusu acikken baska bir panonun menusunu
+            // acmak oncekini kapatsin (birden fazla ayni anda acik kalmasin).
+            var menus = document.querySelectorAll('.board-list-item-menu');
+            menus.forEach(function (menu) {
+                menu.addEventListener('toggle', function () {
+                    if (menu.open) {
+                        menus.forEach(function (other) {
+                            if (other !== menu) {
+                                other.open = false;
+                            }
+                        });
+                    }
+                });
+
+                // Menu icindeki "Yeniden Adlandir" / "Yetkileri Duzenle"
+                // alt panellerinden biri acilinca digeri kapansin.
+                var submenus = menu.querySelectorAll('.board-list-item-submenu');
+                submenus.forEach(function (submenu) {
+                    submenu.addEventListener('toggle', function () {
+                        if (submenu.open) {
+                            submenus.forEach(function (other) {
+                                if (other !== submenu) {
+                                    other.open = false;
+                                }
+                            });
+                        }
+                    });
+                });
+            });
+
+            // Sayfada bos bir yere tiklaninca acik olan "..." menusu kapansin.
+            document.addEventListener('click', function (ev) {
+                menus.forEach(function (menu) {
+                    if (menu.open && !menu.contains(ev.target)) {
+                        menu.open = false;
+                    }
+                });
+            });
+
+            // Mühendis/Admin tarafindaki "Yetkileri Görüntüle" (salt okunur):
+            // panoyu olusturan musteri + digger yetkili musterilerin isim/e-postasi
+            // GetAllBoardsAsync ile onceden yuklenmedigi icin ilk acilista bir
+            // kereligine AJAX ile getirilir; sonraki acilislarda tekrar istek atilmaz.
+            document.querySelectorAll('.board-view-authorizations-details').forEach(function (details) {
+                details.addEventListener('toggle', function () {
+                    if (!details.open || details.dataset.loaded === 'true') {
+                        return;
+                    }
+
+                    var body = details.querySelector('.board-view-authorizations-body');
+                    var boardId = details.dataset.boardId;
+                    fetch('/Board/BoardAuthorizationsPanel?boardId=' + encodeURIComponent(boardId))
+                        .then(function (r) { return r.ok ? r.text() : Promise.reject(); })
+                        .then(function (html) {
+                            body.innerHTML = html;
+                            details.dataset.loaded = 'true';
+                        })
+                        .catch(function () {
+                            body.innerHTML = '<p class="text-muted">Yüklenirken bir hata oluştu.</p>';
+                        });
+                });
+            });
+
+            // Yetkili e-posta ekleme/kaldirma formlari sayfayi yenilemeden
+            // (AJAX ile) calisir; sunucu guncel listeyi parca HTML olarak
+            // dondurur ve sadece o panonun e-posta listesi degistirilir.
+            document.addEventListener('submit', function (ev) {
+                var form = ev.target;
+                var isAdd = form.classList.contains('board-authorize-add-form');
+                var isRemove = form.classList.contains('board-authorized-email-remove-form');
+                if (!isAdd && !isRemove) {
+                    return;
+                }
+
+                ev.preventDefault();
+
+                var panel = form.closest('.board-list-item-authorize-panel');
+                var container = panel ? panel.querySelector('.board-authorized-emails-container') : null;
+                if (!container) {
+                    return;
+                }
+
+                var submitBtn = form.querySelector('button[type="submit"]');
+                if (submitBtn) {
+                    submitBtn.disabled = true;
+                }
+
+                var body = new FormData(form);
+                fetch(form.action, {
+                    method: 'POST',
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                    body: body
+                }).then(function (r) {
+                    if (!r.ok) {
+                        // Sunucu tarafi bir hata (ör. dogrulama hatasi, oturum/
+                        // anti-forgery token'in gecersiz kalmasi) sessizce yutulup
+                        // hicbir sey olmuyormus gibi gorunuyordu; artik kullaniciya
+                        // gorunur bir hata mesaji gosteriliyor.
+                        return r.text().then(function (msg) {
+                            UiDialog.toast({ message: msg || 'İşlem gerçekleştirilemedi, lütfen tekrar deneyin.', tone: 'error' });
+                        });
+                    }
+                    return r.text().then(function (html) {
+                        container.innerHTML = html;
+
+                        if (isAdd) {
+                            var widget = form.querySelector('[data-email-chip-widget]');
+                            if (widget) {
+                                widget.dispatchEvent(new Event('board-email-chip-reset'));
+                            }
+                        }
+                    });
+                }).catch(function () {
+                    UiDialog.toast({ message: 'Bağlantı hatası oluştu, lütfen tekrar deneyin.', tone: 'error' });
+                }).finally(function () {
+                    if (submitBtn) {
+                        submitBtn.disabled = false;
+                    }
+                });
+            });
+
+            // Ust kisimdaki "Müşteriye Göre Filtrele" penceresi: acilir/kapanir
+            // bulaniklastirilmis arkaplan, musteri adina gore (buyuk/kucuk harf
+            // duyarsiz) arama ve checkbox secimine gore pano listesini istemci
+            // tarafinda filtreleme. Sunucuya hicbir istek gitmez.
+            var filterOpenBtn = document.getElementById('customerFilterOpenBtn');
+            var filterBackdrop = document.getElementById('customerFilterBackdrop');
+            var filterCloseBtn = document.getElementById('customerFilterCloseBtn');
+            var filterApplyBtn = document.getElementById('customerFilterApplyBtn');
+            var filterClearBtn = document.getElementById('customerFilterClearBtn');
+            var filterSearchInput = document.getElementById('customerFilterSearch');
+            var filterCountBadge = document.getElementById('customerFilterCount');
+            var filterNoResults = document.getElementById('customerFilterNoResults');
+            var filterNoBoards = document.getElementById('customerFilterNoBoards');
+
+            if (filterOpenBtn && filterBackdrop) {
+                var filterRows = Array.from(filterBackdrop.querySelectorAll('.customer-filter-row'));
+                var filterCheckboxes = Array.from(filterBackdrop.querySelectorAll('.customer-filter-checkbox'));
+                var boardItems = Array.from(document.querySelectorAll('.board-list-item[data-owner-id]'));
+
+                function applyBoardFilter() {
+                    var selectedIds = filterCheckboxes.filter(function (cb) { return cb.checked; }).map(function (cb) { return cb.value; });
+
+                    var visibleCount = 0;
+                    boardItems.forEach(function (item) {
+                        var show = selectedIds.length === 0 || selectedIds.indexOf(item.dataset.ownerId) !== -1;
+                        item.style.display = show ? '' : 'none';
+                        if (show) {
+                            visibleCount++;
+                        }
+                    });
+
+                    if (filterNoBoards) {
+                        filterNoBoards.style.display = (boardItems.length > 0 && visibleCount === 0) ? '' : 'none';
+                    }
+
+                    if (filterCountBadge) {
+                        if (selectedIds.length > 0) {
+                            filterCountBadge.textContent = selectedIds.length;
+                            filterCountBadge.style.display = '';
+                            filterOpenBtn.classList.add('board-header-btn-primary');
+                        } else {
+                            filterCountBadge.style.display = 'none';
+                            filterOpenBtn.classList.remove('board-header-btn-primary');
+                        }
+                    }
+                }
+
+                function openFilterModal() {
+                    filterBackdrop.style.display = 'flex';
+                    if (filterSearchInput) {
+                        filterSearchInput.focus();
+                    }
+                }
+
+                function closeFilterModal() {
+                    filterBackdrop.style.display = 'none';
+                }
+
+                filterOpenBtn.addEventListener('click', openFilterModal);
+                if (filterCloseBtn) {
+                    filterCloseBtn.addEventListener('click', closeFilterModal);
+                }
+                if (filterApplyBtn) {
+                    filterApplyBtn.addEventListener('click', closeFilterModal);
+                }
+                filterBackdrop.addEventListener('click', function (ev) {
+                    if (ev.target === filterBackdrop) {
+                        closeFilterModal();
+                    }
+                });
+                document.addEventListener('keydown', function (ev) {
+                    if (ev.key === 'Escape' && filterBackdrop.style.display !== 'none') {
+                        closeFilterModal();
+                    }
+                });
+
+                if (filterClearBtn) {
+                    filterClearBtn.addEventListener('click', function () {
+                        filterCheckboxes.forEach(function (cb) { cb.checked = false; });
+                        applyBoardFilter();
+                    });
+                }
+
+                filterCheckboxes.forEach(function (cb) {
+                    cb.addEventListener('change', applyBoardFilter);
+                });
+
+                if (filterSearchInput) {
+                    filterSearchInput.addEventListener('input', function () {
+                        var query = filterSearchInput.value.trim().toLocaleLowerCase('tr');
+                        var anyVisible = false;
+                        filterRows.forEach(function (row) {
+                            var matches = query === '' || row.dataset.name.indexOf(query) !== -1;
+                            row.style.display = matches ? '' : 'none';
+                            if (matches) {
+                                anyVisible = true;
+                            }
+                        });
+                        if (filterNoResults) {
+                            filterNoResults.style.display = anyVisible ? 'none' : '';
+                        }
+                    });
+                }
+            }
+        });
+    </script>
+}

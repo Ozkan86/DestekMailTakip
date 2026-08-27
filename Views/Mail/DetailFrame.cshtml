@@ -1,0 +1,33 @@
+@model MailMessageModel
+@{
+    ViewData["Title"] = Model.Subject;
+    ViewData["IsFrame"] = true;
+    Layout = "_FrameLayout";
+    var refreshParent = ViewData["RefreshParent"] as bool? ?? false;
+    var folder = ViewData["Folder"] as string ?? MailFolders.Unassigned;
+}
+
+<partial name="_DetailContent" model="Model" />
+
+@if (refreshParent)
+{
+    @* Atama/kapatma/spam/bayrak/taslak durumu değişti; mail başka bir klasöre
+       geçmiş olabilir. Üst pencereyi (Index) bu mail seçili kalacak şekilde
+       ilgili klasörde yeniden yüklüyoruz. *@
+    <script>
+        window.parent.location.href = '@Html.Raw(Url.Action("Index", "Mail", new { folder, selected = Model.Id }))';
+    </script>
+}
+else if (Model.Id > 0)
+{
+    @* Bu iframe (mailFrame) her yeni mail yüklediğinde -- ister soldaki listeden
+       tıklanarak, ister mail içindeki önceki/sonraki ok ikonlarıyla gezinerek --
+       üst penceredeki listede hangi mailin mavi "seçili" vurgusunu taşıması
+       gerektiğini üst pencereye bildirir. Aksi halde ok ikonlarıyla gezinmek sol
+       listeyi güncellemiyordu (sadece dogrudan tıklama guncelliyordu). *@
+    <script>
+        if (window.parent && window.parent !== window && typeof window.parent.setActiveMailListItem === 'function') {
+            window.parent.setActiveMailListItem(@Model.Id);
+        }
+    </script>
+}

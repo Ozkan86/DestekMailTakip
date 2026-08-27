@@ -1,0 +1,22 @@
+@model string
+@{
+    // Model: gizli alanin "name" degeri (ör. "AuthorizedEmailsRaw"). Birden
+    // fazla widget ayni sayfada (Panolarim listesindeki her pano icin bir
+    // tane) bulunabildiginden id yerine sadece class/data-attribute kullanilir;
+    // JS (board-email-chip-input.js) her widget'i kendi icinde (root) sorgular.
+    var fieldName = string.IsNullOrEmpty(Model) ? "AuthorizedEmailsRaw" : Model;
+    var currentValue = ViewData.ModelState.TryGetValue(fieldName, out var entry) && entry.RawValue is not null
+        ? entry.RawValue.ToString()
+        : null;
+}
+<div class="board-email-chip-widget" data-email-chip-widget>
+    <div class="board-email-chip-input">
+        <input type="text" class="board-email-chip-textinput" placeholder="ornek@sirket.com yazıp Enter'a basın veya + ile ekleyin" />
+        <button type="button" class="board-email-chip-add-btn" title="Ekle" aria-label="E-posta ekle">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
+        </button>
+    </div>
+    <span class="text-danger board-email-chip-error"></span>
+    <div class="board-email-chip-list"></div>
+    <textarea name="@fieldName" hidden>@currentValue</textarea>
+</div>

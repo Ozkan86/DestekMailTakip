@@ -1,0 +1,24 @@
+@model CardAttachmentPanelModel
+<div class="board-card-menu-surface">
+    <div class="board-card-menu-header">
+        <span class="board-card-menu-title">Eklenti Ekle</span>
+        <button type="button" class="board-card-menu-close-btn" title="Kapat">&times;</button>
+    </div>
+
+    <div class="board-cover-section">
+        <div class="board-cover-section-heading">Bağlantı</div>
+        <form class="board-attachment-link-form" data-board-id="@Model.BoardId" data-card-id="@Model.CardId">
+            <input type="url" name="url" class="form-control board-attachment-url-input" placeholder="https://..." required />
+            <button type="submit" class="btn-chip btn-chip-primary">Ekle</button>
+        </form>
+    </div>
+
+    <div class="board-cover-section">
+        <div class="board-cover-section-heading">Bilgisayardan</div>
+        <button type="button" class="board-cover-upload-btn board-attachment-upload-btn" data-board-id="@Model.BoardId" data-card-id="@Model.CardId">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+            <span>Bilgisayardan Dosya Seç</span>
+        </button>
+        <input type="file" class="board-attachment-file-input" data-board-id="@Model.BoardId" data-card-id="@Model.CardId" style="display:none;" />
+    </div>
+</div>

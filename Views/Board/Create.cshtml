@@ -1,0 +1,56 @@
+@model CreateBoardViewModel
+@{
+    Layout = "_BoardLayout";
+    ViewData["Title"] = "Yeni Pano";
+}
+
+<div class="board-page-header">
+    <h2>Yeni Pano Oluştur</h2>
+    <a class="board-header-btn board-header-btn-back" asp-action="Index" title="Pano listesine dön">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12" /><polyline points="12 19 5 12 12 5" /></svg>
+        Panolarım
+    </a>
+</div>
+
+@if (!ViewData.ModelState.IsValid)
+{
+    <div class="alert alert-danger">
+        <ul class="mb-0">
+            @foreach (var error in ViewData.ModelState.Values.SelectMany(v => v.Errors))
+            {
+                <li>@error.ErrorMessage</li>
+            }
+        </ul>
+    </div>
+}
+
+<form asp-action="Create" method="post" class="board-create-layout">
+    <div class="board-form">
+        <div>
+            <label asp-for="Title" class="form-label"></label>
+            <input asp-for="Title" class="form-control" placeholder="Örn. Kitap Uygulaması Geliştirmeleri" />
+            <span asp-validation-for="Title" class="text-danger"></span>
+        </div>
+
+        <div>
+            <label asp-for="AuthorizedEmailsRaw" class="form-label"></label>
+            <partial name="_EmailChipWidget" model="@("AuthorizedEmailsRaw")" />
+        </div>
+
+        <button type="submit" class="btn-chip btn-chip-primary">Panoyu Oluştur</button>
+    </div>
+
+    <div class="board-template-picker">
+        <div class="board-template-picker-title">Pano Şablonu</div>
+        <div class="board-template-grid">
+            @foreach (var template in BoardTemplates.All.Values)
+            {
+                <partial name="_BoardTemplateOption" model="(template, template.Key == Model.TemplateKey, false)" />
+            }
+        </div>
+    </div>
+</form>
+
+@section Scripts {
+    <script src="~/js/board-email-chip-input.js" asp-append-version="true"></script>
+}
